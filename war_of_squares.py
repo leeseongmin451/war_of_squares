@@ -443,17 +443,17 @@ class PlayerCannonBall(pygame.sprite.Sprite):
 
 
 class MobCannonBall1(pygame.sprite.Sprite):
-    def __init__(self, pos, angle):
+    def __init__(self, pos, angle, power, speed):
         pygame.sprite.Sprite.__init__(self)
         self.size = [20, 20]
         self.imagenum = 0
         self.image = pygame.transform.scale(cannonball2_anim[self.imagenum], self.size)
         self.rect = self.image.get_rect()
-        self.power = 47
+        self.power = power
         self.rect.center = pos
         self.abs_x = self.rect.x + screen_center[0]
         self.abs_y = self.rect.y + screen_center[1]
-        self.speed = 12
+        self.speed = speed
         self.speedx = self.speed * math.cos(angle)
         self.speedy = self.speed * math.sin(angle)
 
@@ -1206,10 +1206,10 @@ class FollowerMob2(pygame.sprite.Sprite):
         self.damage = 145
         self.hit = False
         self.hitcount = 0
-        self.hp = 40
+        self.hp = 150
         self.hp_full = self.hp
         self.dead = False
-        self.points = 600
+        self.points = 900
         self.no_points = False
         self.type = random.randrange(1, 5)
         if self.type == 1:
@@ -1682,7 +1682,7 @@ class MinigunMob3(pygame.sprite.Sprite):
         self.damage = 457
         self.hit = False
         self.hitcount = 0
-        self.hp = 130
+        self.hp = 100
         self.hp_full = self.hp
         self.dead = False
         self.points = 795
@@ -1843,7 +1843,7 @@ class ShellMob1(pygame.sprite.Sprite):
         self.damage = 437
         self.hit = False
         self.hitcount = 0
-        self.hp = 55
+        self.hp = 45
         self.hp_full = self.hp
         self.dead = False
         self.points = 532
@@ -2013,7 +2013,7 @@ class ShellMob1(pygame.sprite.Sprite):
                                 dist_x = player.rect.center[0] - self.rect.center[0]
                                 dist_y = player.rect.center[1] - self.rect.center[1]
                                 angle = math.atan2(dist_y, dist_x) + random.uniform(-math.pi / 9, math.pi / 9)
-                                cannonball = MobCannonBall1(self.rect.center, angle)
+                                cannonball = MobCannonBall1(self.rect.center, angle, 47, 12)
                                 all_sprites.add(cannonball)
                                 mob_cannon_balls.add(cannonball)
                             expl_type = random.randrange(1, 12)
@@ -2084,7 +2084,7 @@ class Shell1(pygame.sprite.Sprite):
         self.damage = 176
         self.hit = False
         self.hitcount = 0
-        self.hp = 100
+        self.hp = 50
         self.hp_full = self.hp
         self.dead = False
         self.points = 132
@@ -2141,6 +2141,330 @@ class Shell1(pygame.sprite.Sprite):
                 items.add(item)
             expl_type = random.randrange(1, 12)
             expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            self.kill()
+
+
+class ShellMob2(pygame.sprite.Sprite):
+    """
+    similar to ShellMob1, but its shells move in different direction
+    and shoots cannon ball in different direction
+    """
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = [100, 100]
+        self.debris_size = 25
+        self.debris_speed = random.randrange(13, 20)
+        self.norm_image = shellmob2_core_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = shellmob2_core_hit_anim
+        self.rect = self.image.get_rect()
+        self.speed = random.randrange(7, 11)
+        self.damage = 513
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 65
+        self.hp_full = self.hp
+        self.dead = False
+        self.points = 754
+        self.no_points = False
+        self.cannon_attack = False
+        self.cannon_opened = False
+        self.cannon_open_time = 0
+        self.opened_time = 0
+        self.shell_moved = 0
+        self.fire_time = 0
+        self.fire_interval = 0.1
+        self.cannon_fired = False
+        self.movetype = random.randrange(1, 5)
+        if self.movetype == 1:
+            self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                          (map_size / 2 + 0.5) * screen_width - self.rect.width)
+            self.abs_y = random.randrange(-self.rect.height * 2, -self.rect.height) - (map_size / 2 - 0.5) * screen_height
+            self.speedx = 0
+            self.speedy = self.speed
+        elif self.movetype == 2:
+            self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                          (map_size / 2 + 0.5) * screen_width - self.rect.width)
+            self.abs_y = random.randrange(self.rect.height, self.rect.height * 2) + (map_size / 2 + 0.5) * screen_height - self.rect.height
+            self.speedx = 0
+            self.speedy = -self.speed
+        elif self.movetype == 3:
+            self.abs_x = random.randrange(-self.rect.width * 2, -self.rect.width) - (map_size / 2 - 0.5) * screen_width
+            self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                          (map_size / 2 + 0.5) * screen_height - self.rect.height)
+            self.speedx = self.speed
+            self.speedy = 0
+        else:
+            self.abs_x = random.randrange(self.rect.width, self.rect.width * 2) + (map_size / 2 + 0.5) * screen_width - self.rect.width
+            self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                          (map_size / 2 + 0.5) * screen_height - self.rect.height)
+            self.speedx = -self.speed
+            self.speedy = 0
+        self.rect.x = round(self.abs_x - screen_center[0])
+        self.rect.y = round(self.abs_y - screen_center[1])
+        # shells for each direction
+        self.shell1 = Shell2(1, self.rect.center)
+        self.shell2 = Shell2(2, self.rect.center)
+        self.shell3 = Shell2(3, self.rect.center)
+        self.shell4 = Shell2(4, self.rect.center)
+        self.shells = [self.shell1, self.shell2, self.shell3, self.shell4]
+        self.in_map = False
+        self.i = 0
+
+    def update(self):
+        if self.i == 0:
+            all_mobs.add(self.shell1)
+            all_mobs.add(self.shell2)
+            all_mobs.add(self.shell3)
+            all_mobs.add(self.shell4)
+            self.i += 1
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+
+            if -(map_size / 2 - 0.5) * screen_width < self.abs_x < (map_size / 2 + 0.5) * screen_width - self.rect.width \
+                    and -(map_size / 2 - 0.5) * screen_height < self.abs_y < (map_size / 2 + 0.5) * screen_height - self.rect.height:
+                self.in_map = True
+            if self.in_map:
+                if self.abs_x <= -(map_size / 2 - 0.5) * screen_width or self.abs_x >= (
+                        map_size / 2 + 0.5) * screen_width - self.rect.width:
+                    if self.movetype == 2:
+                        self.movetype = 4
+                    elif self.movetype == 4:
+                        self.movetype = 2
+                    self.speedx = -self.speedx
+                elif self.abs_y <= -(map_size / 2 - 0.5) * screen_height or self.abs_y >= (
+                        map_size / 2 + 0.5) * screen_height - self.rect.height:
+                    if self.movetype == 1:
+                        self.movetype = 3
+                    elif self.movetype == 3:
+                        self.movetype = 1
+                    self.speedy = -self.speedy
+                if random.random() <= 0.007:
+                    turn = random.choice(["l", "r"])
+                    if self.movetype == 1:
+                        if turn == "l":
+                            self.movetype = 3
+                            self.speedx = self.speed
+                            self.speedy = 0
+                        else:
+                            self.movetype = 4
+                            self.speedx = -self.speed
+                            self.speedy = 0
+                    elif self.movetype == 2:
+                        if turn == "l":
+                            self.movetype = 4
+                            self.speedx = -self.speed
+                            self.speedy = 0
+                        else:
+                            self.movetype = 3
+                            self.speedx = self.speed
+                            self.speedy = 0
+                    elif self.movetype == 3:
+                        if turn == "l":
+                            self.movetype = 2
+                            self.speedx = 0
+                            self.speedy = -self.speed
+                        else:
+                            self.movetype = 1
+                            self.speedx = 0
+                            self.speedy = self.speed
+                    else:
+                        if turn == "l":
+                            self.movetype = 1
+                            self.speedx = 0
+                            self.speedy = self.speed
+                        else:
+                            self.movetype = 2
+                            self.speedx = 0
+                            self.speedy = -self.speed
+            if not self.cannon_attack:
+                self.abs_x += self.speedx
+                self.abs_y += self.speedy
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1])
+
+            if not self.cannon_attack and random.random() < 0.003:
+                self.cannon_attack = True
+                self.cannon_opened = False
+                self.shell_moved = 0
+                self.cannon_open_time = random.uniform(0, 1)
+            if self.cannon_attack:
+                if not self.cannon_opened:
+                    self.shell_moved += 1
+                    for s in self.shells:
+                        if not s.dead:
+                            if s.shellnum == 1:
+                                s.update([self.rect.center[0], self.rect.center[1] - self.shell_moved])
+                            elif s.shellnum == 2:
+                                s.update([self.rect.center[0] - self.shell_moved, self.rect.center[1]])
+                            elif s.shellnum == 3:
+                                s.update([self.rect.center[0], self.rect.center[1] + self.shell_moved])
+                            elif s.shellnum == 4:
+                                s.update([self.rect.center[0] + self.shell_moved, self.rect.center[1]])
+                    if self.shell_moved == 20:
+                        self.cannon_opened = True
+                        self.opened_time = time.time()
+                        self.fire_time = time.time()
+
+                if self.cannon_opened:
+                    for s in self.shells:
+                        if not s.dead:
+                            if s.shellnum == 1:
+                                s.update([self.rect.center[0], self.rect.center[1] - self.shell_moved])
+                            elif s.shellnum == 2:
+                                s.update([self.rect.center[0] - self.shell_moved, self.rect.center[1]])
+                            elif s.shellnum == 3:
+                                s.update([self.rect.center[0], self.rect.center[1] + self.shell_moved])
+                            elif s.shellnum == 4:
+                                s.update([self.rect.center[0] + self.shell_moved, self.rect.center[1]])
+                    if not self.cannon_fired:
+                        if time.time() - self.fire_time >= self.fire_interval:
+                            if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
+                                angle = -math.pi * 3 / 4
+                                for ang in range(4):
+                                    cannonball = MobCannonBall1(self.rect.center, angle + ang * math.pi / 2, 55, 20)
+                                    all_sprites.add(cannonball)
+                                    mob_cannon_balls.add(cannonball)
+                            expl_type = random.randrange(1, 12)
+                            expl = Explosion(self.rect.center, expl_type, (round(self.size[0]), round(self.size[1])))
+                            all_sprites.add(expl)
+                            explosions.add(expl)
+                            self.fire_time = time.time()
+                        if time.time() - self.opened_time >= self.cannon_open_time:
+                            self.cannon_fired = True
+                            self.cannon_opened = False
+
+                if self.cannon_fired:
+                    self.shell_moved -= 1
+                    for s in self.shells:
+                        if not s.dead:
+                            if s.shellnum == 1:
+                                s.update([self.rect.center[0], self.rect.center[1] - self.shell_moved])
+                            elif s.shellnum == 2:
+                                s.update([self.rect.center[0] - self.shell_moved, self.rect.center[1]])
+                            elif s.shellnum == 3:
+                                s.update([self.rect.center[0], self.rect.center[1] + self.shell_moved])
+                            elif s.shellnum == 4:
+                                s.update([self.rect.center[0] + self.shell_moved, self.rect.center[1]])
+                    if self.shell_moved == 0:
+                        self.cannon_fired = False
+                        self.cannon_attack = False
+            else:
+                for s in self.shells:
+                    if not s.dead:
+                        s.update(self.rect.center)
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1])
+            if len(self.shells) <= 0:
+                if random.random() <= 0.02:
+                    item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                    all_sprites.add(item)
+                    items.add(item)
+                expl_type = random.randrange(1, 12)
+                expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+                all_sprites.add(expl)
+                explosions.add(expl)
+                self.kill()
+            for s in self.shells:
+                if not s.dead:
+                    s.dead = True
+                    s.update(self.rect.center)
+            self.shells = []
+
+
+class Shell2(pygame.sprite.Sprite):
+    """
+    shell sprite for ShellMob2 class
+    """
+    def __init__(self, shellnum, pos):
+        pygame.sprite.Sprite.__init__(self)
+        self.shellnum = shellnum
+        if self.shellnum == 1:
+            self.size = [150, 50]
+            self.abs_x = pos[0] - self.size[0] // 2
+            self.abs_y = pos[1] - self.size[0] // 2
+        elif self.shellnum == 2:
+            self.size = [50, 150]
+            self.abs_x = pos[0] - self.size[1] // 2
+            self.abs_y = pos[1] - self.size[1] // 2
+        elif self.shellnum == 3:
+            self.size = [150, 50]
+            self.abs_x = pos[0] - self.size[0] // 2
+            self.abs_y = pos[1] + self.size[0] // 2 - self.size[1]
+        elif self.shellnum == 4:
+            self.size = [50, 150]
+            self.abs_x = pos[0] + self.size[1] // 2 - self.size[0]
+            self.abs_y = pos[1] - self.size[1] // 2
+        self.debris_size = 15
+        self.debris_speed = random.randrange(12, 18)
+        self.norm_image = shellmob2_shell_img[shellnum - 1][1]
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = shellmob2_shell_img[shellnum - 1]
+        self.rect = self.image.get_rect()
+        self.damage = 132
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 60
+        self.hp_full = self.hp
+        self.dead = False
+        self.points = 105
+        self.no_points = False
+
+    def update(self, pos=(0, 0)):
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+            if self.shellnum == 1:
+                self.abs_x = pos[0] - self.size[0] // 2
+                self.abs_y = pos[1] - self.size[0] // 2
+            elif self.shellnum == 2:
+                self.abs_x = pos[0] - self.size[1] // 2
+                self.abs_y = pos[1] - self.size[1] // 2
+            elif self.shellnum == 3:
+                self.abs_x = pos[0] - self.size[0] // 2
+                self.abs_y = pos[1] + self.size[0] // 2 - self.size[1]
+            elif self.shellnum == 4:
+                self.abs_x = pos[0] + self.size[1] // 2 - self.size[0]
+                self.abs_y = pos[1] - self.size[1] // 2
+            self.rect.x = self.abs_x
+            self.rect.y = self.abs_y
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x)
+            self.rect.y = round(self.abs_y)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl_size = max(self.size)
+            expl = Explosion(self.rect.center, expl_type, (round(expl_size * 1.5), round(expl_size * 1.5)))
             all_sprites.add(expl)
             explosions.add(expl)
             self.kill()
@@ -2529,14 +2853,14 @@ class BossLV3(pygame.sprite.Sprite):
                                  (round(self.size[0]), round(self.size[1])))
                 all_sprites.add(expl)
                 explosions.add(expl)
-            global stage1_clear, stage1_boss_spawned, now_break_1, break_start, phase_text
-            stage1_clear = True
-            stage1_boss_spawned = False
+            global stage3_clear, stage3_boss_spawned, now_break_3, break_start, phase_text
+            stage3_clear = True
+            stage3_boss_spawned = False
             pointer.kill()
             for m in mobs:
                 if random.random() < 0.7:
                     m.dead = True
-            now_break_1 = True
+            now_break_3 = True
             break_start = time.time()
             phase_text = "{}s BREAKTIME".format(breaktime)
             self.kill()
@@ -2835,7 +3159,7 @@ class BossLV4(pygame.sprite.Sprite):
                                 angle = math.atan2(dist_y, dist_x) + random.uniform(-0.1, 0.1) * math.pi
                                 start_angle = angle - math.pi / 2
                                 while start_angle < angle + math.pi / 2:
-                                    cannonball = MobCannonBall1(self.rect.center, start_angle)
+                                    cannonball = MobCannonBall1(self.rect.center, start_angle, 47, 12)
                                     all_sprites.add(cannonball)
                                     mob_cannon_balls.add(cannonball)
                                     start_angle += math.pi / 14
@@ -2955,7 +3279,7 @@ class BossLV4(pygame.sprite.Sprite):
                     dist_x = player.rect.center[0] - self.rect.center[0]
                     dist_y = player.rect.center[1] - self.rect.center[1]
                     angle = math.atan2(dist_y, dist_x) + random.uniform(-math.pi / 9, math.pi / 9)
-                    cannonball = MobCannonBall1(self.rect.center, angle)
+                    cannonball = MobCannonBall1(self.rect.center, angle, 47, 12)
                     all_sprites.add(cannonball)
                     mob_cannon_balls.add(cannonball)
                     self.cannon_fired = time.time()
@@ -3525,6 +3849,17 @@ for i in range(4):
     shell_hit_img.set_colorkey(WHITE1)
     shell_hit_anim = [shell_hit_img, shell_img] * 3
     shellmob1_shell_img.append(shell_hit_anim)
+shellmob2_core_img = pygame.image.load(path.join(char_dir, "shellmob2_core.png")).convert()
+shellmob2_core_hit_img = pygame.image.load(path.join(char_dir, "shellmob2_core_hit.png")).convert()
+shellmob2_core_hit_anim = [shellmob2_core_hit_img, shellmob2_core_img] * 3
+shellmob2_shell_img = []
+for i in range(4):
+    shell_img = pygame.image.load(path.join(char_dir, "shellmob2_shell{}.png".format(i + 1))).convert()
+    shell_img.set_colorkey(WHITE1)
+    shell_hit_img = pygame.image.load(path.join(char_dir, "shellmob2_shell{}_hit.png".format(i + 1))).convert()
+    shell_hit_img.set_colorkey(WHITE1)
+    shell_hit_anim = [shell_hit_img, shell_img] * 3
+    shellmob2_shell_img.append(shell_hit_anim)
 boss_lv1_img = pygame.image.load(path.join(char_dir, "boss_lv1.png")).convert()
 boss_lv1_hit_img = pygame.image.load(path.join(char_dir, "boss_lv1_hit.png")).convert()
 boss_lv1_hit_anim = [boss_lv1_hit_img, boss_lv1_img] * 3
@@ -3613,6 +3948,7 @@ minigunmobs1 = pygame.sprite.Group()
 minigunmobs2 = pygame.sprite.Group()
 minigunmobs3 = pygame.sprite.Group()
 shellmobs1 = pygame.sprite.Group()
+shellmobs2 = pygame.sprite.Group()
 player_bullets = pygame.sprite.Group()
 player_cannon_balls = pygame.sprite.Group()
 mob_bullets = pygame.sprite.Group()
@@ -3713,6 +4049,11 @@ while not done:
                 player.hp = 300
                 player.hp_full = 300
                 player.weapon_lvl = 3
+            elif stage == 4:
+                phase_bound = [0, 10000, 20000, 35000]
+                player.hp = 500
+                player.hp_full = 500
+                player.weapon_lvl = 4
             elif stage == "test":
                 phase_bound = [0, 10000, 20000, 35000]
                 player.hp = 500
@@ -3926,14 +4267,90 @@ while not done:
         # LEVEL 4 (incomplete)
         elif stage == 4:
             if stage == 4 and not stage4_clear:
-                pass
+                if score < phase_bound[1]:
+                    phase_num = 0
+                    phase_text = "LEVEL 4 / PHASE 1"
+                    max_mobs = 80
+                    if len(mobs) < max_mobs:
+                        if len(linemobs3) <= 77:
+                            add_single_mob(MoveLineMob3(), linemobs3)
+                        elif len(followermobs2) <= 3:
+                            add_single_mob(FollowerMob2(), followermobs2)
+
+                elif phase_bound[1] <= score < phase_bound[2]:
+                    for mob in linemobs3:
+                        mob.dead = True
+                    phase_num = 1
+                    phase_text = "LEVEL 4 / PHASE 2"
+                    max_mobs = 100
+                    if len(mobs) < max_mobs:
+                        if random.random() <= 0.7 and len(linemobs2) < 70:
+                            add_single_mob(MoveLineMob2(), linemobs2)
+                        elif random.random() <= 0.8 and len(followermobs2) < 4:
+                            add_single_mob(FollowerMob2(), followermobs2)
+                        elif random.random() <= 0.925 and len(minigunmobs1) < 30:
+                            add_single_mob(MinigunMob1(), minigunmobs1)
+                        elif len(shellmobs1) < 18:
+                            add_single_mob(ShellMob1(), shellmobs1)
+
+                elif phase_bound[2] <= score <= phase_bound[3]:
+                    for mob in linemobs2:
+                        mob.dead = True
+                    for mob in minigunmobs1:
+                        mob.dead = True
+                    phase_num = 2
+                    phase_text = "LEVEL 4 / PHASE 3"
+                    max_mobs = 60
+                    if len(mobs) < max_mobs:
+                        if random.random() <= 0.25 and len(minigunmobs3) < 15:
+                            add_single_mob(MinigunMob3(), minigunmobs3)
+                        elif random.random() <= 0.3 and len(followermobs2) < 4:
+                            add_single_mob(FollowerMob2(), followermobs2)
+                        elif random.random() <= 0.7 and len(shellmobs1) < 22:
+                            add_single_mob(ShellMob1(), shellmobs1)
+                        elif len(shellmobs2) < 15:
+                            add_single_mob(ShellMob2(), shellmobs2)
+
+                elif phase_bound[3] <= score:
+                    phase_num = "boss"
+                    phase_text = "LEVEL 4 / BOSS CHALLENGE"
+                    max_mobs = 30
+                    if not stage4_boss_spawned:
+                        boss = BossLV4()
+                        all_sprites.add(boss)
+                        mobs.add(boss)
+                        all_mobs.add(boss)
+                        stage4_boss_spawned = True
+                        pointer = BossPointer()
+                        all_sprites.add(pointer)
+                        players.add(pointer)
+                        for mob in linemobs3:
+                            mob.dead = True
+                        for mob in followermobs2:
+                            mob.dead = True
+                        for mob in shellmobs1:
+                            if random.random() < 0.5:
+                                mob.dead = True
+                        for mob in shellmobs2:
+                            if random.random() < 0.5:
+                                mob.dead = True
+                        for mob in minigunmobs3:
+                            if random.random() < 0.5:
+                                mob.dead = True
+                    if random.random() <= 0.33 and len(minigunmobs3) < 12:
+                        add_single_mob(MinigunMob3(), minigunmobs3)
+                    elif random.random() <= 0.66 and len(shellmobs1) < 12:
+                        add_single_mob(ShellMob1(), shellmobs1)
+                    elif len(shellmobs2) < 12:
+                        add_single_mob(ShellMob2(), shellmobs2)
 
         # Stage for testing mobs (current: LEVEL 4)
         elif stage == "test":
             phase_text = "TEST"
             phase_bound = [0, 10000000000000000000]
-            max_mobs = 25
+            max_mobs = 20
             if len(mobs) < max_mobs:
+                """
                 if not stage4_boss_spawned:
                     boss = BossLV4()
                     all_sprites.add(boss)
@@ -3944,7 +4361,9 @@ while not done:
                     all_sprites.add(pointer)
                     players.add(pointer)
                 add_single_mob(ShellMob1(), shellmobs1)
+                """
                 # add_single_mob(FollowerMob2(), followermobs2)
+                add_single_mob(ShellMob2(), shellmobs2)
 
 
         """ dealing with all collision events """
@@ -4135,9 +4554,13 @@ while not done:
             for it in items:
                 it.kill()
             stage1_boss_spawned = False
+            stage1_clear = False
             stage2_boss_spawned = False
+            stage2_clear = False
             stage3_boss_spawned = False
+            stage3_clear = False
             stage4_boss_spawned = False
+            stage4_clear = False
             stage = stage_initial_set
             gameover_show = False
             mainmenu_show = True
