@@ -9,8 +9,7 @@
 3. Hold mouse button: Charging energy cannon
 4. Release mouse button: Shooting energy cannon
 ## Explanation
-1. This game currently have 3 regular stages, and 1 test(incomplete) stage
+1. This game currently have 4 regular stages.
 2. If you run the game without any changes, then the game will start from stage 1.
 3. If you want to start game from stage 2 or 3, change the value of variable "stage" in line 3625 of source code to 2 or 3.
-4. To play test stage, change the value of variable "stage" to string "test".
-5. When you're defeated, please restart the program. Otherwise the game won't restart properly.
+4. When you're defeated, please restart the program. Otherwise the game won't restart properly.
