@@ -4000,10 +4000,18 @@ score = 0
 
 mainmenu_show = True
 play = False
+pause_ready = False
+pause = False
+paused_window_show = False
 gameover_show = False
 
 start_button = Button([450, 600, 300, 100], WHITE1, "START", 60)
 restart_button = Button([450, 600, 300, 100], WHITE1, "RESTART", 60)
+stage_select_buttons = []
+for i in range(3):
+    stage_select_button = Button([150 + 300 * i, 400, 300, 70], WHITE1, "Start from LEVEL {}".format(i + 2), 20)
+    stage_select_buttons.append(stage_select_button)
+    all_buttons.add(stage_select_button)
 all_buttons.add(start_button)
 all_buttons.add(restart_button)
 
@@ -4030,42 +4038,52 @@ while not done:
         screen.fill(BLACK)
         draw_text(screen, "WAR OF SQUARES", 50, WHITE1, "midtop", screen_width // 2, 50)
         start_button.update()
+        for button in stage_select_buttons:
+            button.update()
 
         # initialize player status according to selected level
-        if start_button.operate:
+        if start_button.operate or any([button.operate for button in stage_select_buttons]):
             score = 0
-            if stage == 1:
-                phase_bound = [0, 200, 600, 1600]
-                player.hp = 100
-                player.hp_full = 100
-                player.weapon_lvl = 1
-            elif stage == 2:
+            if start_button.operate:
+                if stage == "test":
+                    phase_bound = [0, 10000, 20000, 35000]
+                    player.hp = 500
+                    player.hp_full = 500
+                    player.weapon_lvl = 4
+                else:
+                    stage = 1
+                    phase_bound = [0, 200, 600, 1600]
+                    player.hp = 100
+                    player.hp_full = 100
+                    player.weapon_lvl = 1
+                start_button.operate = False
+            elif stage_select_buttons[0].operate:
+                stage = 2
                 phase_bound = [0, 2000, 5000, 9000]
                 player.hp = 150
                 player.hp_full = 150
                 player.weapon_lvl = 2
-            elif stage == 3:
+                stage_select_buttons[0].operate = False
+            elif stage_select_buttons[1].operate:
+                stage = 3
                 phase_bound = [0, 4000, 10000, 18000]
                 player.hp = 300
                 player.hp_full = 300
                 player.weapon_lvl = 3
-            elif stage == 4:
+                stage_select_buttons[1].operate = False
+            elif stage_select_buttons[2].operate:
+                stage = 4
                 phase_bound = [0, 10000, 20000, 35000]
                 player.hp = 500
                 player.hp_full = 500
                 player.weapon_lvl = 4
-            elif stage == "test":
-                phase_bound = [0, 10000, 20000, 35000]
-                player.hp = 500
-                player.hp_full = 500
-                player.weapon_lvl = 4
+                stage_select_buttons[2].operate = False
             player.mp = 100
             player.mp_full = 100
             player.rect.center = (screen_width // 2, screen_height // 2)
             screen_center = [0, 0]
             mainmenu_show = False
             play = True
-            start_button.operate = False
             start_button.kill()
 
     elif play:
@@ -4348,21 +4366,34 @@ while not done:
         elif stage == "test":
             phase_text = "TEST"
             phase_bound = [0, 10000000000000000000]
-            max_mobs = 20
-            if len(mobs) < max_mobs:
-                """
-                if not stage4_boss_spawned:
-                    boss = BossLV4()
-                    all_sprites.add(boss)
-                    mobs.add(boss)
-                    all_mobs.add(boss)
-                    stage4_boss_spawned = True
-                    pointer = BossPointer()
-                    all_sprites.add(pointer)
-                    players.add(pointer)
+            max_mobs = 30
+            if not stage4_boss_spawned:
+                boss = BossLV4()
+                all_sprites.add(boss)
+                mobs.add(boss)
+                all_mobs.add(boss)
+                stage4_boss_spawned = True
+                pointer = BossPointer()
+                all_sprites.add(pointer)
+                players.add(pointer)
+                for mob in linemobs3:
+                    mob.dead = True
+                for mob in followermobs2:
+                    mob.dead = True
+                for mob in shellmobs1:
+                    if random.random() < 0.5:
+                        mob.dead = True
+                for mob in shellmobs2:
+                    if random.random() < 0.5:
+                        mob.dead = True
+                for mob in minigunmobs3:
+                    if random.random() < 0.5:
+                        mob.dead = True
+            if random.random() <= 0.33 and len(minigunmobs3) < 12:
+                add_single_mob(MinigunMob3(), minigunmobs3)
+            elif random.random() <= 0.66 and len(shellmobs1) < 12:
                 add_single_mob(ShellMob1(), shellmobs1)
-                """
-                # add_single_mob(FollowerMob2(), followermobs2)
+            elif len(shellmobs2) < 12:
                 add_single_mob(ShellMob2(), shellmobs2)
 
 
@@ -4456,8 +4487,22 @@ while not done:
             hit.buff()
 
 
-        """ update all sprites per frame """
-        all_sprites.update()
+        """ pause control """
+        p_pressed = pygame.key.get_pressed()[pygame.K_p]
+        if p_pressed:
+            pause_ready = True
+        if pause_ready:
+            if not p_pressed:
+                pause_ready = False
+                pause = not pause
+
+
+        """ update all sprites per frame when not paused """
+        if not pause:
+            paused_window_show = False
+            all_sprites.update()
+        else:
+            paused_window_show = True
 
 
         """ draw all objects on screen """
@@ -4523,6 +4568,13 @@ while not done:
         # draw score and phase text
         draw_text(screen, phase_text, 20, WHITE1, "midtop", screen_width // 2, 30)
         draw_text(screen, "SCORE : {}".format(round(score, 2)), 15, WHITE1, "topleft", 20, 65)
+
+        # draw paused window when paused
+        if paused_window_show:
+            pygame.draw.rect(screen, BLACK, [200, 300, 800, 200], 0)
+            pygame.draw.rect(screen, WHITE1, [200, 300, 800, 200], 4)
+            draw_text(screen, "PAUSED", 50, WHITE1, "midtop", 600, 330)
+            draw_text(screen, "Press 'P' to continue", 20, WHITE1, "midtop", 600, 430)
 
     # display gameover scene
     elif gameover_show:
