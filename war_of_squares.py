@@ -1,9 +1,9 @@
 """
 ----War of Squares----
-This game currently has 3 regular stages, and 1 test stage.
-The regular stages are defined as number(1, 2, 3) in "stage" variable.
-The test stage is an incomplete level and defined as string "test" in
-"stage" variable.
+This game currently has 3 regular stages, and 1 test level.
+The regular stages are defined as number(1, 2, 3) in "level" variable.
+The test level is an incomplete level and defined as string "test" in
+"level" variable.
 """
 
 import pygame
@@ -98,8 +98,24 @@ def draw_text(surf, text, size, color, pos, x, y):
     surf.blit(text_surface, text_rect)
 
 
+def is_aligned(pos_1, pos_2, pos_3, error):
+    """
+    checks whether pos_2 is aligned between pos_1 ans pos_3
+    """
+    coeff_a = pos_1[1] - pos_3[1]
+    coeff_b = pos_3[0] - pos_1[0]
+    coeff_c = pos_1[0] * pos_3[1] - pos_3[0] * pos_1[1]
+
+    if coeff_a == 0 and coeff_b == 0:
+        return False
+
+    distance_from_line_to_point = abs(coeff_a * pos_2[0] + coeff_b * pos_2[1] + coeff_c) / math.sqrt(coeff_a ** 2 + coeff_b ** 2)
+
+    return distance_from_line_to_point <= error and ((pos_1[0] <= pos_2[0] <= pos_3[0]) or (pos_3[0] <= pos_2[0] <= pos_1[0])) and ((pos_1[1] <= pos_2[1] <= pos_3[1]) or (pos_3[1] <= pos_2[1] <= pos_1[1]))
+
+
 class Button(pygame.sprite.Sprite):
-    def __init__(self, btn_pos_size, btn_color, text, text_size, btnbck_color=(0, 0, 0)):
+    def __init__(self, btn_pos_size, btn_color, text, text_size, btnbck_color=(0, 0, 0), active=True):
         pygame.sprite.Sprite.__init__(self)
         self.btn_color = btn_color
         self.btnbck_color_orig = btnbck_color
@@ -109,6 +125,7 @@ class Button(pygame.sprite.Sprite):
         self.rect = btn_pos_size
         self.text = text
         self.text_size = text_size
+        self.active = active
         self.pressed = False
         self.released = False
         self.operate = False
@@ -120,27 +137,42 @@ class Button(pygame.sprite.Sprite):
         draw_text(screen, self.text, self.text_size, self.btn_color, "center", self.rect[0] + self.rect[2] // 2, self.rect[1] + self.rect[3] // 2)
 
     def update(self):
-        if pygame.Rect(self.rect).collidepoint(curspos[0], curspos[1]):
-            self.btnbck_color = self.mouse_on_color
-            if click:
-                self.pressed = True
-            if self.pressed:
-                self.btnbck_color = self.clicked_color
-                if not click:
-                    self.released = True
-                    self.pressed = False
-                    self.btnbck_color = self.mouse_on_color
-            elif self.released:
-                self.operate = True
+        if self.active:
+            if pygame.Rect(self.rect).collidepoint(curspos[0], curspos[1]):
+                self.btnbck_color = self.mouse_on_color
+                if click:
+                    self.pressed = True
+                if self.pressed:
+                    self.btnbck_color = self.clicked_color
+                    if not click:
+                        self.released = True
+                        self.pressed = False
+                        self.btnbck_color = self.mouse_on_color
+                elif self.released:
+                    self.operate = True
+                    self.released = False
+            else:
+                self.btnbck_color = self.btnbck_color_orig
+                self.pressed = False
                 self.released = False
+                self.operate = False
+            pygame.draw.rect(screen, self.btnbck_color, self.rect, 0)
+            pygame.draw.rect(screen, self.btn_color, self.rect, 2)
+            draw_text(screen, self.text, self.text_size, self.btn_color, "center", self.rect[0] + self.rect[2] // 2, self.rect[1] + self.rect[3] // 2)
         else:
+            pygame.draw.rect(screen, self.btnbck_color, self.rect, 0)
+            pygame.draw.rect(screen, self.clicked_color, self.rect, 2)
+            draw_text(screen, self.text, self.text_size, self.clicked_color, "center", self.rect[0] + self.rect[2] // 2, self.rect[1] + self.rect[3] // 2)
             self.btnbck_color = self.btnbck_color_orig
             self.pressed = False
             self.released = False
             self.operate = False
-        pygame.draw.rect(screen, self.btnbck_color, self.rect, 0)
-        pygame.draw.rect(screen, self.btn_color, self.rect, 2)
-        draw_text(screen, self.text, self.text_size, self.btn_color, "center", self.rect[0] + self.rect[2] // 2, self.rect[1] + self.rect[3] // 2)
+
+    def activate(self):
+        self.active = True
+
+    def deactivate(self):
+        self.active = False
 
 
 class Player(pygame.sprite.Sprite):
@@ -151,19 +183,34 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = [screen_width // 2, screen_height // 2]
         self.abs_x = screen_width // 2
         self.abs_y = screen_height // 2
-        self.hp = 100
+
+        self.stat_points = 0
+
+        self.hp_list = [100, 150, 300, 500, 750, 1000, 1300, 1600, 2000, 2500]
+        self.hp_lvl = 1
+        self.hp = self.hp_list[self.hp_lvl - 1]
         self.hp_full = self.hp
-        self.mp = 100
+
+        self.mp_list = [100, 150, 200, 300, 400, 600, 800, 1100, 1400, 1800]
+        self.mp_lvl = 1
+        self.mp = self.mp_list[self.mp_lvl - 1]
         self.mp_full = self.mp
+
+        self.pick_range_list = [60, 80, 100, 120, 140, 160, 180, 200, 220, 240]
+        self.pick_range_lvl = 1
+        self.pick_range = self.pick_range_list[self.pick_range_lvl - 1]
+
+        self.main_weapon_lvl = 1
+
+        self.charging_cannon_power_list = [120, 150, 180, 220, 270, 330, 400, 480, 580, 700]
+        self.charging_cannon_lvl = 1
+        self.max_cannon_power = self.charging_cannon_power_list[self.charging_cannon_lvl - 1]
+        self.cannon_charge_rate = self.max_cannon_power / 40
+        self.max_shock_range = 27 * math.sqrt(self.max_cannon_power)
+
         self.speed = 6
         self.x_speed = 0
         self.y_speed = 0
-        self.pick_range = 100
-        self.bullet_power = 1
-        self.max_cannon_power = 120
-        self.cannon_charge_rate = 3
-        self.max_shock_range = 300
-        self.weapon_lvl = 1
         self.shoot_interval = 0.1
         self.last_shoot = time.time()
         self.cannon_shoot = False
@@ -208,7 +255,7 @@ class Player(pygame.sprite.Sprite):
                 self.y_speed = self.speed
             self.abs_y += self.speed
         self.rect.x += self.x_speed
-        self.rect.y += self.y_speed
+        self.rect.y += self.y_speed + round(field_shift_pos)
 
         if time.time() - self.last_shoot >= self.shoot_interval and (not click or time.time() - self.last_cannon_shoot < self.cannon_cooltime):
             self.shoot(curspos)
@@ -234,32 +281,39 @@ class Player(pygame.sprite.Sprite):
         dist_y = target_pos[1] - self.rect.center[1]
         angle = math.atan2(dist_y, dist_x)
         if dist_x != 0 or dist_y != 0:
-            if self.weapon_lvl == 1:    # shoots 1 bullet per interval
-                bullet = PlayerBullet(self.bullet_power, angle)
+            # lvl 1: shoots 1 bullet with power 1 per interval
+            if self.main_weapon_lvl == 1:
+                bullet = PlayerBullet(1, [5, 5], angle, 15)
                 all_sprites.add(bullet)
                 player_bullets.add(bullet)
-            elif self.weapon_lvl == 2:  # shoots 2 bullets per interval
-                bullet_1 = PlayerBullet(self.bullet_power, angle + math.pi / 36)
-                bullet_2 = PlayerBullet(self.bullet_power, angle - math.pi / 36)
+
+            # lvl 2: shoots 2 bullets with power 1 per interval
+            elif self.main_weapon_lvl == 2:
+                bullet_1 = PlayerBullet(1, [5, 5], angle + math.pi / 36, 15)
+                bullet_2 = PlayerBullet(1, [5, 5], angle - math.pi / 36, 15)
                 all_sprites.add(bullet_1)
                 all_sprites.add(bullet_2)
                 player_bullets.add(bullet_1)
                 player_bullets.add(bullet_2)
-            elif self.weapon_lvl == 3:  # shoots 2 bullets per interval
-                bullet_1 = PlayerBullet(self.bullet_power, angle)
-                bullet_2 = PlayerBullet(self.bullet_power, angle + math.pi / 18)
-                bullet_3 = PlayerBullet(self.bullet_power, angle - math.pi / 18)
+
+            # lvl 3: shoots 3 bullets with power 1 per interval
+            elif self.main_weapon_lvl == 3:
+                bullet_1 = PlayerBullet(1, [5, 5], angle, 15)
+                bullet_2 = PlayerBullet(1, [5, 5], angle + math.pi / 18, 15)
+                bullet_3 = PlayerBullet(1, [5, 5], angle - math.pi / 18, 15)
                 all_sprites.add(bullet_1)
                 all_sprites.add(bullet_2)
                 all_sprites.add(bullet_3)
                 player_bullets.add(bullet_1)
                 player_bullets.add(bullet_2)
                 player_bullets.add(bullet_3)
-            elif self.weapon_lvl == 4:  # shoots 2 bullets per interval
-                bullet_1 = PlayerBullet(self.bullet_power, angle + math.pi / 180)
-                bullet_2 = PlayerBullet(self.bullet_power, angle - math.pi / 180)
-                bullet_3 = PlayerBullet(self.bullet_power, angle + math.pi / 18)
-                bullet_4 = PlayerBullet(self.bullet_power, angle - math.pi / 18)
+
+            # lvl 4: shoots 4 bullets with power 1 per interval
+            elif self.main_weapon_lvl == 4:
+                bullet_1 = PlayerBullet(1, [5, 5], angle + math.pi / 180, 15)
+                bullet_2 = PlayerBullet(1, [5, 5], angle - math.pi / 180, 15)
+                bullet_3 = PlayerBullet(1, [5, 5], angle + math.pi / 18, 15)
+                bullet_4 = PlayerBullet(1, [5, 5], angle - math.pi / 18, 15)
                 all_sprites.add(bullet_1)
                 all_sprites.add(bullet_2)
                 all_sprites.add(bullet_3)
@@ -268,6 +322,120 @@ class Player(pygame.sprite.Sprite):
                 player_bullets.add(bullet_2)
                 player_bullets.add(bullet_3)
                 player_bullets.add(bullet_4)
+
+            # lvl 5: shoots 2 bullets with power 2 and 2 bullets with power 1 per interval
+            elif self.main_weapon_lvl == 5:
+                bullet_1 = PlayerBullet(2, [7, 7], angle + math.pi / 180, 20)
+                bullet_2 = PlayerBullet(2, [7, 7], angle - math.pi / 180, 20)
+                bullet_3 = PlayerBullet(1, [5, 5], angle + math.pi / 18, 15)
+                bullet_4 = PlayerBullet(1, [5, 5], angle - math.pi / 18, 15)
+                all_sprites.add(bullet_1)
+                all_sprites.add(bullet_2)
+                all_sprites.add(bullet_3)
+                all_sprites.add(bullet_4)
+                player_bullets.add(bullet_1)
+                player_bullets.add(bullet_2)
+                player_bullets.add(bullet_3)
+                player_bullets.add(bullet_4)
+
+            # lvl 6: 2x3 + 1x2 per interval
+            elif self.main_weapon_lvl == 6:
+                bullet_1 = PlayerBullet(2, [7, 7], angle, 20)
+                bullet_2 = PlayerBullet(2, [7, 7], angle + math.pi / 90, 20)
+                bullet_3 = PlayerBullet(2, [7, 7], angle - math.pi / 90, 20)
+                bullet_4 = PlayerBullet(1, [5, 5], angle + math.pi / 18, 15)
+                bullet_5 = PlayerBullet(1, [5, 5], angle - math.pi / 18, 15)
+                all_sprites.add(bullet_1)
+                all_sprites.add(bullet_2)
+                all_sprites.add(bullet_3)
+                all_sprites.add(bullet_4)
+                all_sprites.add(bullet_5)
+                player_bullets.add(bullet_1)
+                player_bullets.add(bullet_2)
+                player_bullets.add(bullet_3)
+                player_bullets.add(bullet_4)
+                player_bullets.add(bullet_5)
+
+            # lvl 7: 4x1 + 2x2 + 1x2 per interval
+            elif self.main_weapon_lvl == 7:
+                bullet_1 = PlayerBullet(4, [9, 9], angle, 30)
+                bullet_2 = PlayerBullet(2, [7, 7], angle + math.pi / 60, 20)
+                bullet_3 = PlayerBullet(2, [7, 7], angle - math.pi / 60, 20)
+                bullet_4 = PlayerBullet(1, [5, 5], angle + math.pi / 18, 15)
+                bullet_5 = PlayerBullet(1, [5, 5], angle - math.pi / 18, 15)
+                all_sprites.add(bullet_1)
+                all_sprites.add(bullet_2)
+                all_sprites.add(bullet_3)
+                all_sprites.add(bullet_4)
+                all_sprites.add(bullet_5)
+                player_bullets.add(bullet_1)
+                player_bullets.add(bullet_2)
+                player_bullets.add(bullet_3)
+                player_bullets.add(bullet_4)
+                player_bullets.add(bullet_5)
+
+            # lvl 8: 4x2 + 2x2 + 1x2 per interval
+            elif self.main_weapon_lvl == 8:
+                bullet_1 = PlayerBullet(4, [9, 9], angle + math.pi / 180, 30)
+                bullet_2 = PlayerBullet(4, [9, 9], angle - math.pi / 180, 30)
+                bullet_3 = PlayerBullet(2, [7, 7], angle + math.pi / 60, 20)
+                bullet_4 = PlayerBullet(2, [7, 7], angle - math.pi / 60, 20)
+                bullet_5 = PlayerBullet(1, [5, 5], angle + math.pi / 18, 15)
+                bullet_6 = PlayerBullet(1, [5, 5], angle - math.pi / 18, 15)
+                all_sprites.add(bullet_1)
+                all_sprites.add(bullet_2)
+                all_sprites.add(bullet_3)
+                all_sprites.add(bullet_4)
+                all_sprites.add(bullet_5)
+                all_sprites.add(bullet_6)
+                player_bullets.add(bullet_1)
+                player_bullets.add(bullet_2)
+                player_bullets.add(bullet_3)
+                player_bullets.add(bullet_4)
+                player_bullets.add(bullet_5)
+                player_bullets.add(bullet_6)
+
+            # lvl 9: 4x2 + 2x4 per interval
+            elif self.main_weapon_lvl == 9:
+                bullet_1 = PlayerBullet(4, [9, 9], angle + math.pi / 180, 30)
+                bullet_2 = PlayerBullet(4, [9, 9], angle - math.pi / 180, 30)
+                bullet_3 = PlayerBullet(2, [7, 7], angle + math.pi / 60, 20)
+                bullet_4 = PlayerBullet(2, [7, 7], angle - math.pi / 60, 20)
+                bullet_5 = PlayerBullet(2, [7, 7], angle + math.pi / 18, 20)
+                bullet_6 = PlayerBullet(2, [7, 7], angle - math.pi / 18, 20)
+                all_sprites.add(bullet_1)
+                all_sprites.add(bullet_2)
+                all_sprites.add(bullet_3)
+                all_sprites.add(bullet_4)
+                all_sprites.add(bullet_5)
+                all_sprites.add(bullet_6)
+                player_bullets.add(bullet_1)
+                player_bullets.add(bullet_2)
+                player_bullets.add(bullet_3)
+                player_bullets.add(bullet_4)
+                player_bullets.add(bullet_5)
+                player_bullets.add(bullet_6)
+
+            # lvl 10: 8x2 + 4x2 + 2x2 per interval
+            elif self.main_weapon_lvl == 10:
+                bullet_1 = PlayerBullet(8, [11, 11], angle + math.pi / 90, 40)
+                bullet_2 = PlayerBullet(8, [11, 11], angle - math.pi / 90, 40)
+                bullet_3 = PlayerBullet(4, [9, 9], angle + math.pi / 60, 30)
+                bullet_4 = PlayerBullet(4, [9, 9], angle - math.pi / 60, 30)
+                bullet_5 = PlayerBullet(2, [7, 7], angle + math.pi / 18, 20)
+                bullet_6 = PlayerBullet(2, [7, 7], angle - math.pi / 18, 20)
+                all_sprites.add(bullet_1)
+                all_sprites.add(bullet_2)
+                all_sprites.add(bullet_3)
+                all_sprites.add(bullet_4)
+                all_sprites.add(bullet_5)
+                all_sprites.add(bullet_6)
+                player_bullets.add(bullet_1)
+                player_bullets.add(bullet_2)
+                player_bullets.add(bullet_3)
+                player_bullets.add(bullet_4)
+                player_bullets.add(bullet_5)
+                player_bullets.add(bullet_6)
 
 
 class TargetPointer(pygame.sprite.Sprite):
@@ -282,9 +450,9 @@ class TargetPointer(pygame.sprite.Sprite):
 
 
 class PlayerBullet(pygame.sprite.Sprite):
-    def __init__(self, power, angle):
+    def __init__(self, power, size, angle, speed):
         pygame.sprite.Sprite.__init__(self)
-        self.size = [5, 5]
+        self.size = size
         self.color_orig = BLUE1
         self.color = self.color_orig
         self.image = pygame.Surface(self.size)
@@ -294,7 +462,7 @@ class PlayerBullet(pygame.sprite.Sprite):
         self.rect.center = player.rect.center
         self.abs_x = self.rect.x + screen_center[0]
         self.abs_y = self.rect.y + screen_center[1]
-        self.speed = 15
+        self.speed = speed
         self.speedx = self.speed * math.cos(angle)
         self.speedy = self.speed * math.sin(angle)
 
@@ -302,7 +470,7 @@ class PlayerBullet(pygame.sprite.Sprite):
         self.abs_x += self.speedx
         self.abs_y += self.speedy
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         if self.color == CYAN1:
             self.color = self.color_orig
             self.image.fill(self.color)
@@ -335,7 +503,7 @@ class MobBullet1(pygame.sprite.Sprite):     # used by specific mob (BossLv3)
         self.abs_x += self.speedx
         self.abs_y += self.speedy
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         if self.color == WHITE1:
             self.color = self.color_orig
             self.image.fill(self.color)
@@ -368,7 +536,7 @@ class Bullet(pygame.sprite.Sprite):     # can be used by any object
         self.abs_x += self.speedx
         self.abs_y += self.speedy
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         if self.glow:
             if self.color == WHITE1:
                 self.color = self.color_orig
@@ -419,6 +587,7 @@ class PlayerCannonBall(pygame.sprite.Sprite):
                 dist_y = curspos[1] - self.rect.center[1]
                 self.angle = math.atan2(dist_y, dist_x)
                 self.released = True
+                self.power = round(self.power)
                 self.shock_range = player.max_shock_range * (self.power / self.max_power)
                 self.abs_x = self.rect.x + screen_center[0]
                 self.abs_y = self.rect.y + screen_center[1]
@@ -430,7 +599,7 @@ class PlayerCannonBall(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
         if self.imagenum == 0:
             self.imagenum = 1
@@ -443,7 +612,7 @@ class PlayerCannonBall(pygame.sprite.Sprite):
             self.kill()
 
 
-class MobCannonBall1(pygame.sprite.Sprite):
+class MobExplodingCannonBall1(pygame.sprite.Sprite):
     def __init__(self, pos, angle, power, speed):
         pygame.sprite.Sprite.__init__(self)
         self.size = [20, 20]
@@ -462,7 +631,7 @@ class MobCannonBall1(pygame.sprite.Sprite):
         self.abs_x += self.speedx
         self.abs_y += self.speedy
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         if self.imagenum == 0:
             self.imagenum = 1
             self.image = pygame.transform.scale(cannonball2_anim[self.imagenum], self.size)
@@ -474,20 +643,71 @@ class MobCannonBall1(pygame.sprite.Sprite):
             self.kill()
 
 
+class MobChargingCannonBall1(pygame.sprite.Sprite):
+    def __init__(self, pos, power, speed, parent):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = [1, 1]
+        self.imagenum = 0
+        self.image = pygame.transform.scale(cannonball3_anim[self.imagenum], self.size)
+        self.rect = self.image.get_rect()
+        self.power = power
+        self.rect.center = pos
+        self.abs_x = self.rect.x + screen_center[0]
+        self.abs_y = self.rect.y + screen_center[1]
+        self.angle = 0
+        self.speed = speed
+        self.speedx = 0
+        self.speedy = 0
+        self.released = False
+        self.parent = parent
+
+    def update(self):
+        self.imagenum = not self.imagenum
+        self.image = pygame.transform.scale(cannonball3_anim[self.imagenum], self.size)
+
+        if not self.released:
+            if self.parent.dead:
+                self.kill()
+
+            self.size = [p + 1 for p in self.size]
+            self.rect = self.image.get_rect()
+            self.rect.center = self.parent.rect.center
+            if self.size[0] == 20:
+                self.abs_x = self.rect.x + screen_center[0]
+                self.abs_y = self.rect.y + screen_center[1]
+                dist_x = player.rect.center[0] - self.parent.rect.center[0]
+                dist_y = player.rect.center[1] - self.parent.rect.center[1]
+                self.angle = math.atan2(dist_y, dist_x)
+
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+                self.released = True
+
+        else:
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+        if not (-200 < self.rect.center[0] < 1800 and -200 < self.rect.center[1] < 1400):
+            self.kill()
+
+
 class BossPointer(pygame.sprite.Sprite):
     # points to boss's direction when boss spawned
-    def __init__(self):
+    def __init__(self, boss):
         pygame.sprite.Sprite.__init__(self)
         self.image_orig = pygame.transform.scale(bosspointer_img, (80, 15))
         self.image_orig.set_colorkey((255, 255, 255))
         self.image = self.image_orig.copy()
         self.rect = self.image.get_rect()
         self.rect.center = player.rect.center
+        self.targeting_boss = boss
 
     def update(self):
         self.rect.center = player.rect.center
-        dist_x = boss.rect.center[0] - player.rect.center[0]
-        dist_y = boss.rect.center[1] - player.rect.center[1]
+        dist_x = self.targeting_boss.rect.center[0] - player.rect.center[0]
+        dist_y = self.targeting_boss.rect.center[1] - player.rect.center[1]
         angle = math.atan2(dist_y, dist_x) * 180 / math.pi
         new_image = pygame.transform.rotate(self.image_orig, -angle)
         old_center = self.rect.center
@@ -496,42 +716,47 @@ class BossPointer(pygame.sprite.Sprite):
         self.rect.center = old_center
 
 
-class MoveLineMob1(pygame.sprite.Sprite):
+class Mob(pygame.sprite.Sprite):
     """
-    just moves through straight line with random direction and random speed
-    does not attack player
+    The parent sprite of all mobs
+    Has common attributes and methods
     """
-    def __init__(self):
+    def __init__(self, size, debris_size, debris_speed, norm_image, hit_anim, speed, damage, hp, points):
         pygame.sprite.Sprite.__init__(self)
-        self.size = [30, 30]
-        self.debris_size = 16
-        self.debris_speed = random.randrange(10, 15)
-        self.norm_image = linemob1_img
+        self.size = size
+        self.debris_size = debris_size
+        self.debris_speed = debris_speed
+        self.norm_image = norm_image
         self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = linemob1_hit_anim
+        self.hit_anim = hit_anim
         self.rect = self.image.get_rect()
-        self.speed = random.randrange(5, 10)
-        self.damage = 15
+        self.speed = speed
+        self.damage = damage
         self.hit = False
         self.hitcount = 0
-        self.hp = 1
+        self.hp = hp
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
-        self.points = 5
+        self.points = points
         self.no_points = False
-        self.angle = random.uniform(-math.pi, math.pi)
-        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
-                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
-                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
-        self.speedx = self.speed * math.cos(self.angle)
-        self.speedy = self.speed * math.sin(self.angle)
+
+        self.abs_x = self.abs_y = 0
+
+        self.spawned = False
+        self.spawn_effect = None
+
+    def set_pos_and_spawn(self, abs_pos):
+        self.abs_x, self.abs_y = abs_pos
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
+
 
     def update(self):
         if not self.spawned:
@@ -540,19 +765,66 @@ class MoveLineMob1(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         global score
         if self.hp <= 0:
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
                 else:
                     self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
                     self.hitcount += 1
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            self.kill()
+
+
+class MoveLineMob1(Mob):
+    """
+    just moves through straight line with random direction and random speed
+    does not attack player
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        Mob.__init__(self, [30, 30], 16, random.randrange(10, 15), linemob1_img, linemob1_hit_anim, random.randrange(5, 10), 15, 1, 5)
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+
+        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
+
+        self.group.add(self)
+
+    def update(self):
+        Mob.update(self)
+        if not self.dead and self.spawned:
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             if not (-self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (map_size / 2 + 0.5) * screen_width and
@@ -568,45 +840,79 @@ class MoveLineMob1(pygame.sprite.Sprite):
                 self.speedx = self.speed * math.cos(self.angle)
                 self.speedy = self.speed * math.sin(self.angle)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
-            if random.random() <= 0.02:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, 12)
-            expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
-            all_sprites.add(expl)
-            explosions.add(expl)
-            self.kill()
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
 
-class MoveLineMob2(pygame.sprite.Sprite):
+class MoveLineMob2(Mob):
     """
     similar to MoveLineMob1, but has bigger size and higher hp
     """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        Mob.__init__(self, [40, 40], 20, random.randrange(12, 18), linemob2_img, linemob2_hit_anim, random.randrange(3, 8), 37, 5, 35)
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+
+        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
+
+        self.group.add(self)
+
+    def update(self):
+        Mob.update(self)
+        if not self.dead and self.spawned:
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            if not (-self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (map_size / 2 + 0.5) * screen_width and
+                    -self.rect.height - (map_size / 2 - 0.5) * screen_height < self.abs_y < (map_size / 2 + 0.5) * screen_height):
+                if self.abs_x <= -self.rect.width - (map_size / 2 - 0.5) * screen_width:
+                    self.abs_x = (map_size / 2 + 0.5) * screen_width - 1
+                elif self.abs_x >= (map_size / 2 + 0.5) * screen_width:
+                    self.abs_x = -self.rect.width - (map_size / 2 - 0.5) * screen_width + 1
+                elif self.abs_y <= -self.rect.height - (map_size / 2 - 0.5) * screen_height:
+                    self.abs_y = (map_size / 2 + 0.5) * screen_height - 1
+                else:
+                    self.abs_y = -self.rect.height - (map_size / 2 - 0.5) * screen_height + 1
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+
+class MoveLineMob2Armored(pygame.sprite.Sprite):
+    """
+    similar to MoveLineMob2, but has an armor with high hp
+    """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = [40, 40]
         self.debris_size = 20
         self.debris_speed = random.randrange(12, 18)
-        self.norm_image = linemob2_img
+        self.norm_image = linemob2_armored_img
+        self.no_armor_image = linemob2_img
         self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = linemob2_hit_anim
+        self.no_armor_hit_anim = linemob2_hit_anim
+        self.hit_anim = linemob2_armored_hit_anim
         self.rect = self.image.get_rect()
         self.speed = random.randrange(3, 8)
-        self.damage = 37
+        self.damage = 158
         self.hit = False
         self.hitcount = 0
-        self.hp = 5
+        self.hp = 60
+        self.no_armor_hp = 10
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.no_armor = False
         self.dead = False
-        self.points = 35
+        self.points = 125
         self.no_points = False
         self.angle = random.uniform(-math.pi, math.pi)
         self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
@@ -616,11 +922,13 @@ class MoveLineMob2(pygame.sprite.Sprite):
         self.speedx = self.speed * math.cos(self.angle)
         self.speedy = self.speed * math.sin(self.angle)
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
+
+        self.group.add(self)
 
     def update(self):
         if not self.spawned:
@@ -629,13 +937,27 @@ class MoveLineMob2(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         global score
         if self.hp <= 0:
-            self.dead = True
+            if self.no_armor:
+                self.dead = True
+            else:
+                self.no_armor = True
+                self.hp = self.no_armor_hp
+                self.image = pygame.transform.scale(self.no_armor_image, self.size)
+                self.hit_anim = self.no_armor_hit_anim
+
+                expl_type = random.randrange(1, 12)
+                expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+                all_sprites.add(expl)
+                explosions.add(expl)
+
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -657,13 +979,17 @@ class MoveLineMob2(pygame.sprite.Sprite):
                 self.speedx = self.speed * math.cos(self.angle)
                 self.speedy = self.speed * math.sin(self.angle)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -675,27 +1001,76 @@ class MoveLineMob2(pygame.sprite.Sprite):
             self.kill()
 
 
-class MoveLineMob3(pygame.sprite.Sprite):
+class MoveLineMob3(Mob):
     """
     similar to MoveLineMob1, but has bigger size and higher hp
     """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        Mob.__init__(self, [80, 80], 26, random.randrange(14, 20), linemob3_img, linemob3_hit_anim, random.randrange(2, 5), 134, 20, 180)
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+
+        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
+
+        self.group.add(self)
+
+    def update(self):
+        Mob.update(self)
+        if not self.dead and self.spawned:
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            if not (-self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (map_size / 2 + 0.5) * screen_width and
+                    -self.rect.height - (map_size / 2 - 0.5) * screen_height < self.abs_y < (map_size / 2 + 0.5) * screen_height):
+                if self.abs_x <= -self.rect.width - (map_size / 2 - 0.5) * screen_width:
+                    self.abs_x = (map_size / 2 + 0.5) * screen_width - 1
+                elif self.abs_x >= (map_size / 2 + 0.5) * screen_width:
+                    self.abs_x = -self.rect.width - (map_size / 2 - 0.5) * screen_width + 1
+                elif self.abs_y <= -self.rect.height - (map_size / 2 - 0.5) * screen_height:
+                    self.abs_y = (map_size / 2 + 0.5) * screen_height - 1
+                else:
+                    self.abs_y = -self.rect.height - (map_size / 2 - 0.5) * screen_height + 1
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+
+class MoveLineMob3Armored(pygame.sprite.Sprite):
+    """
+    similar to MoveLineMob2, but has an armor with high hp
+    """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = [80, 80]
         self.debris_size = 26
         self.debris_speed = random.randrange(14, 20)
-        self.norm_image = linemob3_img
+        self.norm_image = linemob3_armored_img
+        self.no_armor_image = linemob3_img
         self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = linemob3_hit_anim
+        self.no_armor_hit_anim = linemob3_hit_anim
+        self.hit_anim = linemob3_armored_hit_anim
         self.rect = self.image.get_rect()
         self.speed = random.randrange(2, 5)
-        self.damage = 300
+        self.damage = 322
         self.hit = False
         self.hitcount = 0
-        self.hp = 20
+        self.hp = 125
+        self.no_armor_hp = 40
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.no_armor = False
         self.dead = False
-        self.points = 180
+        self.points = 345
         self.no_points = False
         self.angle = random.uniform(-math.pi, math.pi)
         self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
@@ -705,11 +1080,13 @@ class MoveLineMob3(pygame.sprite.Sprite):
         self.speedx = self.speed * math.cos(self.angle)
         self.speedy = self.speed * math.sin(self.angle)
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
+
+        self.group.add(self)
 
     def update(self):
         if not self.spawned:
@@ -718,13 +1095,27 @@ class MoveLineMob3(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         global score
         if self.hp <= 0:
-            self.dead = True
+            if self.no_armor:
+                self.dead = True
+            else:
+                self.no_armor = True
+                self.hp = self.no_armor_hp
+                self.image = pygame.transform.scale(self.no_armor_image, self.size)
+                self.hit_anim = self.no_armor_hit_anim
+
+                expl_type = random.randrange(1, 12)
+                expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+                all_sprites.add(expl)
+                explosions.add(expl)
+
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -746,13 +1137,17 @@ class MoveLineMob3(pygame.sprite.Sprite):
                 self.speedx = self.speed * math.cos(self.angle)
                 self.speedy = self.speed * math.sin(self.angle)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -770,6 +1165,8 @@ class WallMobUnit1(pygame.sprite.Sprite):
     make up a large wall with themselves and move up, down, left or right
     wall-generating function is defined separately
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, movetype, pos, speed):
         pygame.sprite.Sprite.__init__(self)
         self.unitsize = [40, 40]
@@ -788,6 +1185,8 @@ class WallMobUnit1(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 2
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 10
         self.no_points = False
@@ -805,7 +1204,9 @@ class WallMobUnit1(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+        self.group.add(self)
 
     def update(self):
         global score
@@ -813,6 +1214,8 @@ class WallMobUnit1(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -827,13 +1230,17 @@ class WallMobUnit1(pygame.sprite.Sprite):
                     or (self.movetype == 4 and self.abs_x < -self.rect.width * 2 - (map_size / 2 - 0.5) * screen_width):
                 self.kill()
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.unitsize[0] + self.unitsize[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -849,6 +1256,8 @@ class WallMobUnit2(pygame.sprite.Sprite):
     """
     similar to WallMobUnit1, but has bigger size or higher hp
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, movetype, pos, speed):
         pygame.sprite.Sprite.__init__(self)
         self.unitsize = [40, 40]
@@ -867,8 +1276,10 @@ class WallMobUnit2(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 3
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
-        self.points = 30
+        self.points = 17
         self.no_points = False
         self.movetype = movetype
         if self.movetype == 1:
@@ -884,7 +1295,9 @@ class WallMobUnit2(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+        self.group.add(self)
 
     def update(self):
         global score
@@ -892,6 +1305,8 @@ class WallMobUnit2(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -906,13 +1321,17 @@ class WallMobUnit2(pygame.sprite.Sprite):
                     or (self.movetype == 4 and self.abs_x < -self.rect.width * 2 - (map_size / 2 - 0.5) * screen_width):
                 self.kill()
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.unitsize[0] + self.unitsize[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -928,6 +1347,8 @@ class WallMobUnit3(pygame.sprite.Sprite):
     """
     similar to WallMobUnit1, but has bigger size or higher hp
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, movetype, pos, speed):
         pygame.sprite.Sprite.__init__(self)
         self.unitsize = [70, 70]
@@ -941,13 +1362,15 @@ class WallMobUnit3(pygame.sprite.Sprite):
         self.abs_x = self.pos[0]
         self.abs_y = self.pos[1]
         self.speed = speed
-        self.damage = 155
+        self.damage = 57
         self.hit = False
         self.hitcount = 0
         self.hp = 8
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
-        self.points = 130
+        self.points = 50
         self.no_points = False
         self.movetype = movetype
         if self.movetype == 1:
@@ -963,7 +1386,9 @@ class WallMobUnit3(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+        self.group.add(self)
 
     def update(self):
         global score
@@ -971,6 +1396,8 @@ class WallMobUnit3(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -985,13 +1412,17 @@ class WallMobUnit3(pygame.sprite.Sprite):
                     or (self.movetype == 4 and self.abs_x < -self.rect.width * 2 - (map_size / 2 - 0.5) * screen_width):
                 self.kill()
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.unitsize[0] + self.unitsize[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -1104,6 +1535,8 @@ class FollowerMob1(pygame.sprite.Sprite):
     """
     moves toward player with random speed
     """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = [100, 100]
@@ -1119,6 +1552,8 @@ class FollowerMob1(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 30
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 400
         self.no_points = False
@@ -1140,10 +1575,12 @@ class FollowerMob1(pygame.sprite.Sprite):
             self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
                                           (map_size / 2 + 0.5) * screen_height - self.rect.height)
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         all_mobs.add(self)
+
+        self.group.add(self)
 
     def update(self):
         global score
@@ -1151,6 +1588,8 @@ class FollowerMob1(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -1162,7 +1601,11 @@ class FollowerMob1(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -1183,6 +1626,8 @@ class FollowerMob2(pygame.sprite.Sprite):
     similaar to FollowerMob1, but generates a number of small mobs when killed
     small mobs will be defined in a separate sprite class named "FollowerMob2Child"
     """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = [140, 140]
@@ -1198,6 +1643,8 @@ class FollowerMob2(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 150
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 900
         self.no_points = False
@@ -1219,10 +1666,12 @@ class FollowerMob2(pygame.sprite.Sprite):
             self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
                                           (map_size / 2 + 0.5) * screen_height - self.rect.height)
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         all_mobs.add(self)
+
+        self.group.add(self)
 
     def update(self):
         global score
@@ -1230,6 +1679,8 @@ class FollowerMob2(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -1241,7 +1692,11 @@ class FollowerMob2(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -1272,6 +1727,8 @@ class FollowerMob2Child(pygame.sprite.Sprite):
     but the "acceleration" direction is set to player, not "speed" direction
     acceleration constant and max speed are set randomly
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, abs_pos, direction):
         pygame.sprite.Sprite.__init__(self)
         self.size = [15, 15]
@@ -1289,13 +1746,15 @@ class FollowerMob2Child(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 1
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 15
         self.no_points = False
         self.abs_x = abs_pos[0]
         self.abs_y = abs_pos[1]
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.speedx = self.speed * math.cos(self.dir)
         self.speedy = self.speed * math.sin(self.dir)
         dist_x = player.rect.center[0] - self.rect.center[0]
@@ -1305,12 +1764,16 @@ class FollowerMob2Child(pygame.sprite.Sprite):
         self.acc_x = self.acc * math.cos(self.acc_dir)
         self.acc_y = self.acc * math.sin(self.acc_dir)
 
+        self.group.add(self)
+
     def update(self):
         global score
         if self.hp <= 0:
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -1327,7 +1790,11 @@ class FollowerMob2Child(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -1350,6 +1817,8 @@ class MinigunMob1(pygame.sprite.Sprite):
     but the direction can be changed with a specific probability in every frame
     the "movetype" attribute defines only initial move direction of the mob
     """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = (70, 70)
@@ -1365,6 +1834,8 @@ class MinigunMob1(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 40
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 384
         self.no_points = False
@@ -1390,11 +1861,13 @@ class MinigunMob1(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
+
+        self.group.add(self)
 
     def update(self):
         if not self.spawned:
@@ -1403,13 +1876,15 @@ class MinigunMob1(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         global score
         if self.hp <= 0:
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -1419,7 +1894,7 @@ class MinigunMob1(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.01:
                 turn = random.choice(["l", "r"])
                 if self.movetype == 1:
@@ -1480,12 +1955,16 @@ class MinigunMob1(pygame.sprite.Sprite):
                     mob_bullets.add(bullet)
                     self.trigger = False
                     self.last_shoot = time.time()
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -1502,6 +1981,8 @@ class MinigunMob2(pygame.sprite.Sprite):
     similar to MinigunMob1, but has larger size, slower speed and higher hp
     spreads multiple bullets at a time
     """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = (100, 100)
@@ -1517,6 +1998,8 @@ class MinigunMob2(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 65
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 497
         self.no_points = False
@@ -1548,11 +2031,13 @@ class MinigunMob2(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
+
+        self.group.add(self)
 
     def update(self):
         if not self.spawned:
@@ -1561,13 +2046,15 @@ class MinigunMob2(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         global score
         if self.hp <= 0:
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -1577,7 +2064,7 @@ class MinigunMob2(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.01:
                 turn = random.choice(["l", "r"])
                 if self.movetype == 1:
@@ -1646,12 +2133,16 @@ class MinigunMob2(pygame.sprite.Sprite):
                 if self.current_bullets <= 0:
                     self.trigger = False
                     self.last_shoot = time.time()
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -1668,6 +2159,8 @@ class MinigunMob3(pygame.sprite.Sprite):
     similar to MinigunMob1, but has larger size, slower speed and higher hp
     shoots a chain of bullets to multiple directions like a short laser blast
     """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = (150, 150)
@@ -1683,6 +2176,8 @@ class MinigunMob3(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 100
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 795
         self.no_points = False
@@ -1713,11 +2208,13 @@ class MinigunMob3(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
+
+        self.group.add(self)
 
     def update(self):
         if not self.spawned:
@@ -1726,13 +2223,15 @@ class MinigunMob3(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         global score
         if self.hp <= 0:
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -1742,7 +2241,7 @@ class MinigunMob3(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.01:
                 turn = random.choice(["l", "r"])
                 if self.movetype == 1:
@@ -1809,12 +2308,16 @@ class MinigunMob3(pygame.sprite.Sprite):
                     if self.current_bullets >= self.bullets_per_shoot:
                         self.trigger = False
                         self.last_shoot = time.time()
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -1833,6 +2336,8 @@ class ShellMob1(pygame.sprite.Sprite):
     attacks player with cannon ball when shells are opened
     moving pattern is same as MinigunMobs
     """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = [100, 100]
@@ -1848,6 +2353,8 @@ class ShellMob1(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 45
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 532
         self.no_points = False
@@ -1877,7 +2384,7 @@ class ShellMob1(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, [self.size[0] + 40, self.size[1] + 40])
         all_sprites.add(self.spawn_effect)
@@ -1891,6 +2398,8 @@ class ShellMob1(pygame.sprite.Sprite):
         self.in_map = False
         self.i = 0
 
+        self.group.add(self)
+
     def update(self):
         if not self.spawned:
             if self.spawn_effect.complete:
@@ -1898,7 +2407,7 @@ class ShellMob1(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         if self.i == 0:
             all_mobs.add(self.shell1)
@@ -1911,6 +2420,8 @@ class ShellMob1(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -1978,7 +2489,7 @@ class ShellMob1(pygame.sprite.Sprite):
                 self.abs_x += self.speedx
                 self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
             if not self.cannon_attack and random.random() < 0.003:
                 self.cannon_attack = True
@@ -2020,7 +2531,7 @@ class ShellMob1(pygame.sprite.Sprite):
                                 dist_x = player.rect.center[0] - self.rect.center[0]
                                 dist_y = player.rect.center[1] - self.rect.center[1]
                                 angle = math.atan2(dist_y, dist_x) + random.uniform(-math.pi / 9, math.pi / 9)
-                                cannonball = MobCannonBall1(self.rect.center, angle, 47, 12)
+                                cannonball = MobExplodingCannonBall1(self.rect.center, angle, 47, 12)
                                 all_sprites.add(cannonball)
                                 mob_cannon_balls.add(cannonball)
                             expl_type = random.randrange(1, 12)
@@ -2052,12 +2563,15 @@ class ShellMob1(pygame.sprite.Sprite):
                     if not s.dead:
                         s.update(self.rect.center)
 
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if len(self.shells) <= 0:
                 if random.random() <= 0.02:
                     item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
@@ -2079,6 +2593,8 @@ class Shell1(pygame.sprite.Sprite):
     """
     shell sprite for ShellMob1 class
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, shellnum, pos):
         pygame.sprite.Sprite.__init__(self)
         self.size = [70, 70]
@@ -2093,6 +2609,8 @@ class Shell1(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 50
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 132
         self.no_points = False
@@ -2110,12 +2628,16 @@ class Shell1(pygame.sprite.Sprite):
             self.abs_x = pos[0]
             self.abs_y = pos[1]
 
+        self.group.add(self)
+
     def update(self, pos=(0, 0)):
         global score
         if self.hp <= 0:
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -2136,6 +2658,10 @@ class Shell1(pygame.sprite.Sprite):
                 self.abs_y = pos[1]
             self.rect.x = self.abs_x
             self.rect.y = self.abs_y
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -2158,6 +2684,8 @@ class ShellMob2(pygame.sprite.Sprite):
     similar to ShellMob1, but its shells move in different direction
     and shoots cannon ball in different direction
     """
+    group = pygame.sprite.Group()
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.size = [100, 100]
@@ -2173,6 +2701,8 @@ class ShellMob2(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 65
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 754
         self.no_points = False
@@ -2202,7 +2732,7 @@ class ShellMob2(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, [self.size[0] + 50, self.size[1] + 50])
         all_sprites.add(self.spawn_effect)
@@ -2216,6 +2746,8 @@ class ShellMob2(pygame.sprite.Sprite):
         self.in_map = False
         self.i = 0
 
+        self.group.add(self)
+
     def update(self):
         if not self.spawned:
             if self.spawn_effect.complete:
@@ -2223,7 +2755,7 @@ class ShellMob2(pygame.sprite.Sprite):
                 self.spawn_effect.kill()
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             return
         if self.i == 0:
             all_mobs.add(self.shell1)
@@ -2236,6 +2768,8 @@ class ShellMob2(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -2303,7 +2837,7 @@ class ShellMob2(pygame.sprite.Sprite):
                 self.abs_x += self.speedx
                 self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
             if not self.cannon_attack and random.random() < 0.003:
                 self.cannon_attack = True
@@ -2344,7 +2878,7 @@ class ShellMob2(pygame.sprite.Sprite):
                             if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
                                 angle = -math.pi * 3 / 4
                                 for ang in range(4):
-                                    cannonball = MobCannonBall1(self.rect.center, angle + ang * math.pi / 2, 55, 20)
+                                    cannonball = MobExplodingCannonBall1(self.rect.center, angle + ang * math.pi / 2, 55, 20)
                                     all_sprites.add(cannonball)
                                     mob_cannon_balls.add(cannonball)
                             expl_type = random.randrange(1, 12)
@@ -2376,12 +2910,15 @@ class ShellMob2(pygame.sprite.Sprite):
                     if not s.dead:
                         s.update(self.rect.center)
 
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if len(self.shells) <= 0:
                 if random.random() <= 0.02:
                     item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
@@ -2403,6 +2940,8 @@ class Shell2(pygame.sprite.Sprite):
     """
     shell sprite for ShellMob2 class
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, shellnum, pos):
         pygame.sprite.Sprite.__init__(self)
         self.shellnum = shellnum
@@ -2433,9 +2972,13 @@ class Shell2(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 60
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 105
         self.no_points = False
+
+        self.group.add(self)
 
     def update(self, pos=(0, 0)):
         global score
@@ -2443,6 +2986,8 @@ class Shell2(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -2463,6 +3008,10 @@ class Shell2(pygame.sprite.Sprite):
                 self.abs_y = pos[1] - self.size[1] // 2
             self.rect.x = self.abs_x
             self.rect.y = self.abs_y
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -2489,6 +3038,8 @@ class BarricadeMob1(pygame.sprite.Sprite):
     a BarricadeMob copies itself and widen their distance, generating barricade between them
     after generating barricade, it 'sweeps' the field on direction perpendicular to barricade
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, static=True, pos=(), duplicate=None):
         pygame.sprite.Sprite.__init__(self)
         self.size = (120, 120)
@@ -2514,6 +3065,8 @@ class BarricadeMob1(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 30
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 314
         self.no_points = False
@@ -2548,7 +3101,7 @@ class BarricadeMob1(pygame.sprite.Sprite):
             self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
                                           (map_size / 2 + 0.5) * screen_height - self.rect.height)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             self.start_pos_x = self.abs_x + self.rect.width // 2
             self.start_pos_y = self.abs_y + self.rect.height // 2
             self.speedx = 0
@@ -2592,7 +3145,7 @@ class BarricadeMob1(pygame.sprite.Sprite):
                 self.speedx = -self.speed
                 self.speedy = 0
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             self.start_pos_x = self.abs_x + self.rect.width // 2
             self.start_pos_y = self.abs_y + self.rect.height // 2
 
@@ -2603,6 +3156,8 @@ class BarricadeMob1(pygame.sprite.Sprite):
             self.has_barricade = True
 
             self.spawned = False
+
+        self.group.add(self)
 
     def update(self):
         global score
@@ -2615,7 +3170,7 @@ class BarricadeMob1(pygame.sprite.Sprite):
                     self.hit_anim = self.charge0_hit_anim
                     all_mobs.add(self)
                     self.rect.x = round(self.abs_x - screen_center[0])
-                    self.rect.y = round(self.abs_y - screen_center[1])
+                    self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
                     self.charge_start_time = time.time()
                     self.spawned = True
                 return
@@ -2625,7 +3180,7 @@ class BarricadeMob1(pygame.sprite.Sprite):
                 self.hit_anim = self.charge4_hit_anim
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
                 self.charge_start_time = time.time()
                 self.spawned = True
 
@@ -2634,6 +3189,8 @@ class BarricadeMob1(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -2643,7 +3200,7 @@ class BarricadeMob1(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
             if not (-self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (
                     map_size / 2 + 0.5) * screen_width and
@@ -2701,7 +3258,7 @@ class BarricadeMob1(pygame.sprite.Sprite):
                         self.duplicate = BarricadeMob1(False, [self.abs_x, self.abs_y], self)
                         all_sprites.add(self.duplicate)
                         mobs.add(self.duplicate)
-                        barricademobs1.add(self.duplicate)
+                        self.group.add(self.duplicate)
                         self.has_duplicate = True
                         self.has_barricade = True
                         self.generating_barricade = True
@@ -2786,13 +3343,16 @@ class BarricadeMob1(pygame.sprite.Sprite):
                     self.charge_mode = 0
                     self.change_mode = True
 
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         # death
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -2815,6 +3375,8 @@ class Barricade(pygame.sprite.Sprite):
     """
     a unit of barricade wall generated by BarricadeMob
     """
+    group = pygame.sprite.Group()
+
     def __init__(self, dierction, pos, prev_barricade, next_barricade, parent_mobs, is_prev_parent=False, is_next_parent=False):
         pygame.sprite.Sprite.__init__(self)
         self.size = (40, 40)
@@ -2848,6 +3410,8 @@ class Barricade(pygame.sprite.Sprite):
         self.position_fixed = False
         self.sweep = False
 
+        self.group.add(self)
+
     def update(self):
         global score
         if self.hp <= 0:
@@ -2859,7 +3423,7 @@ class Barricade(pygame.sprite.Sprite):
 
         if not self.dead:
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
             if not self.position_fixed and self.parent_mobs[0].sweep:
                 self.relative_x = self.abs_x + self.rect.width // 2 - self.parent_mobs[0].abs_x - self.parent_mobs[0].rect.width // 2
@@ -2883,7 +3447,7 @@ class Barricade(pygame.sprite.Sprite):
 
         else:
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= 0.02:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
                 all_sprites.add(item)
@@ -2905,29 +3469,757 @@ class Barricade(pygame.sprite.Sprite):
             self.kill()
 
 
-class BossLV1(pygame.sprite.Sprite):
+class OrbitMob1(pygame.sprite.Sprite):
     """
-    stage 1 boss
+    orbitmob - mothership(or core)
+    protects itself with "orbiters" orbiting itself.
+    if orbiters are destroyed, the mother ship relaunches new orbiter to its orbit.
+    orbiters attack player with cannonballs, and mothership just moves around.
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = [150, 150]
+        self.debris_size = 25
+        self.debris_speed = random.randrange(15, 24)
+        self.norm_image = orbitmob1_mothership_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = orbitmob1_mothership_hit_anim
+        self.rect = self.image.get_rect()
+        self.speed = random.randrange(2, 5)
+        self.damage = 638
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 180
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = 785
+        self.no_points = False
+
+        self.orbiter_generating_time_interval = 1
+        self.last_orbiter_generated_time = time.time()
+        self.orbiter = None
+        self.orbiters = pygame.sprite.Group()
+        self.max_number_of_orbiters = 10
+        self.number_of_orbiters = 0
+
+        self.attack_interval = random.uniform(5, 10)
+        self.last_attacked = time.time()
+
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+        self.rect.x = round(self.abs_x - screen_center[0])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+        self.spawned = False
+        self.spawn_effect = SpawnEffect(self.rect.center, [self.size[0], self.size[1]])
+        all_sprites.add(self.spawn_effect)
+        spawns.add(self.spawn_effect)
+
+        self.group.add(self)
+
+    def update(self):
+        if not self.spawned:
+            if self.spawn_effect.complete:
+                self.spawned = True
+                self.spawn_effect.kill()
+                all_mobs.add(self)
+                self.rect.x = round(self.abs_x - screen_center[0])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+                while self.number_of_orbiters < self.max_number_of_orbiters:
+                    self.orbiter = Orbiter1(self.rect.center)
+                    self.orbiters.add(self.orbiter)
+                    all_mobs.add(self.orbiter)
+                    self.number_of_orbiters += 1
+            return
+
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+
+            if not (-3 * self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (
+                    map_size / 2 + 0.5) * screen_width + 2 * self.rect.width and
+                    -3 * self.rect.height - (map_size / 2 - 0.5) * screen_height < self.abs_y < (
+                            map_size / 2 + 0.5) * screen_height + 2 * self.rect.height):
+                if self.abs_x <= -3 * self.rect.width - (map_size / 2 - 0.5) * screen_width:
+                    self.abs_x = (map_size / 2 + 0.5) * screen_width + self.rect.width
+                elif self.abs_x >= (map_size / 2 + 0.5) * screen_width + 2 * self.rect.width:
+                    self.abs_x = -2 * self.rect.width - (map_size / 2 - 0.5) * screen_width + 1
+                elif self.abs_y <= -3 * self.rect.height - (map_size / 2 - 0.5) * screen_height:
+                    self.abs_y = (map_size / 2 + 0.5) * screen_height + self.rect.height
+                else:
+                    self.abs_y = -2 * self.rect.height - (map_size / 2 - 0.5) * screen_height
+
+            if random.random() <= 0.02:
+                self.angle = random.uniform(self.angle - math.pi / 2, self.angle + math.pi / 2)
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            self.number_of_orbiters = len(self.orbiters)
+            if time.time() - self.last_orbiter_generated_time >= self.orbiter_generating_time_interval and\
+                    self.number_of_orbiters < self.max_number_of_orbiters:
+                self.orbiter = Orbiter1(self.rect.center)
+                self.orbiters.add(self.orbiter)
+                all_mobs.add(self.orbiter)
+                self.number_of_orbiters += 1
+                self.last_orbiter_generated_time = time.time()
+
+            for orbiter in self.orbiters:
+                orbiter.update(self.rect.center)
+
+            if time.time() - self.last_attacked >= self.attack_interval:
+                for orbiter in self.orbiters:
+                    orbiter.attack()
+                self.last_attacked = time.time()
+                self.attack_interval = random.uniform(5, 10)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            for orbiter in self.orbiters:
+                orbiter.dead = True
+                orbiter.update(self.rect.center)
+            self.kill()
+
+
+class Orbiter1(pygame.sprite.Sprite):
+    """
+    orbitmob - orbiter
+    circles around mothership and attacks player with cannonball
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self, pos):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = [35, 35]
+        self.debris_size = 10
+        self.debris_speed = random.randrange(5, 9)
+        self.norm_image = orbitmob1_orbiter_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = orbitmob1_orbiter_hit_anim
+        self.rect = self.image.get_rect()
+        self.damage = 76
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 10
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = 34
+        self.no_points = False
+
+        self.reached_max_angular_speed = False
+        self.on_orbit = False
+        self.max_distance_to_mothership = 150
+        self.distance_to_mothership = 0
+        self.angular_pos = random.uniform(-math.pi, math.pi)
+        self.max_angular_speed = random.uniform(0.03, 0.1)
+        self.angular_speed = 0
+        self.relative_x = self.distance_to_mothership * math.cos(self.angular_pos)
+        self.relative_y = self.distance_to_mothership * math.sin(self.angular_pos)
+
+        self.abs_x = pos[0] + self.relative_x - self.rect.width // 2
+        self.abs_y = pos[1] + self.relative_y - self.rect.height // 2
+        self.rect.x = round(self.abs_x)
+        self.rect.y = round(self.abs_y)
+
+        self.group.add(self)
+
+    def update(self, pos=(0, 0)):
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+
+            if not self.reached_max_angular_speed:
+                self.angular_speed += 0.001
+                if self.angular_speed >= self.max_angular_speed:
+                    self.reached_max_angular_speed = True
+
+            if not self.on_orbit:
+                self.distance_to_mothership += 3
+                if self.distance_to_mothership >= self.max_distance_to_mothership:
+                    self.on_orbit = True
+
+            self.angular_pos += self.angular_speed
+            self.relative_x = self.distance_to_mothership * math.cos(self.angular_pos)
+            self.relative_y = self.distance_to_mothership * math.sin(self.angular_pos)
+            self.abs_x = pos[0] + self.relative_x - self.rect.width // 2
+            self.abs_y = pos[1] + self.relative_y - self.rect.height // 2
+            self.rect.x = round(self.abs_x)
+            self.rect.y = round(self.abs_y)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x)
+            self.rect.y = round(self.abs_y)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl_size = max(self.size)
+            expl = Explosion(self.rect.center, expl_type, (round(expl_size * 1.5), round(expl_size * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            self.kill()
+
+    def attack(self):
+        cannonball = MobChargingCannonBall1(self.rect.center, 36, 12, self)
+        all_sprites.add(cannonball)
+        mob_cannon_balls.add(cannonball)
+
+
+class BlockMob(pygame.sprite.Sprite):
+    """
+    just moves through straight line with random direction, random speed, and has random size
+    does not attack player
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.factor = random.randrange(30, 121)
+        self.size = [self.factor] * 2
+        self.debris_size = 8 * self.factor // 30
+        self.debris_speed = random.randrange(10, 15)
+        self.norm_image = blockmob_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = blockmob_hit_anim
+        self.rect = self.image.get_rect()
+        self.speed = random.randrange(7, 12) / (self.factor / 30)
+        self.damage = 76 * self.factor / 30
+        self.hit = False
+        self.hitcount = 0
+        self.hp = round(13 * ((self.factor / 30) ** 2))
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = round(40 * ((self.factor / 30) ** 2))
+        self.no_points = False
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+        self.rect.x = round(self.abs_x - screen_center[0])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+        self.spawned = False
+        self.spawn_effect = SpawnEffect(self.rect.center, self.size)
+        all_sprites.add(self.spawn_effect)
+        spawns.add(self.spawn_effect)
+
+        self.group.add(self)
+
+    def update(self):
+        if not self.spawned:
+            if self.spawn_effect.complete:
+                self.spawned = True
+                self.spawn_effect.kill()
+                all_mobs.add(self)
+                self.rect.x = round(self.abs_x - screen_center[0])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            return
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            if not (-self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (map_size / 2 + 0.5) * screen_width and
+                    -self.rect.height - (map_size / 2 - 0.5) * screen_height < self.abs_y < (map_size / 2 + 0.5) * screen_height):
+                if self.abs_x <= -self.rect.width - (map_size / 2 - 0.5) * screen_width:
+                    self.abs_x = (map_size / 2 + 0.5) * screen_width - 1
+                elif self.abs_x >= (map_size / 2 + 0.5) * screen_width:
+                    self.abs_x = -self.rect.width - (map_size / 2 - 0.5) * screen_width + 1
+                elif self.abs_y <= -self.rect.height - (map_size / 2 - 0.5) * screen_height:
+                    self.abs_y = (map_size / 2 + 0.5) * screen_height - 1
+                else:
+                    self.abs_y = -self.rect.height - (map_size / 2 - 0.5) * screen_height + 1
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            self.kill()
+
+
+class GhostMob(pygame.sprite.Sprite):
+    """
+    almost invisible to player
+    similar to BlockMobs
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.factor = random.randrange(30, 121)
+        self.size = [self.factor] * 2
+        self.debris_size = 8 * self.factor // 30
+        self.debris_speed = random.randrange(10, 15)
+        self.norm_image = ghostmob_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = ghostmob_hit_anim
+        self.rect = self.image.get_rect()
+        self.speed = random.randrange(7, 12) / (self.factor / 30)
+        self.damage = 76 * self.factor / 60
+        self.hit = False
+        self.hitcount = 0
+        self.hp = round(13 * ((self.factor / 30) ** 2))
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = round(40 * ((self.factor / 30) ** 2))
+        self.no_points = False
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+        self.rect.x = round(self.abs_x - screen_center[0])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+        self.spawned = False
+        self.spawn_effect = SpawnEffect(self.rect.center, self.size)
+        all_sprites.add(self.spawn_effect)
+        spawns.add(self.spawn_effect)
+
+        self.group.add(self)
+
+    def update(self):
+        if not self.spawned:
+            if self.spawn_effect.complete:
+                self.spawned = True
+                self.spawn_effect.kill()
+                all_mobs.add(self)
+                self.rect.x = round(self.abs_x - screen_center[0])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            return
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            if not (-self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (map_size / 2 + 0.5) * screen_width and
+                    -self.rect.height - (map_size / 2 - 0.5) * screen_height < self.abs_y < (map_size / 2 + 0.5) * screen_height):
+                if self.abs_x <= -self.rect.width - (map_size / 2 - 0.5) * screen_width:
+                    self.abs_x = (map_size / 2 + 0.5) * screen_width - 1
+                elif self.abs_x >= (map_size / 2 + 0.5) * screen_width:
+                    self.abs_x = -self.rect.width - (map_size / 2 - 0.5) * screen_width + 1
+                elif self.abs_y <= -self.rect.height - (map_size / 2 - 0.5) * screen_height:
+                    self.abs_y = (map_size / 2 + 0.5) * screen_height - 1
+                else:
+                    self.abs_y = -self.rect.height - (map_size / 2 - 0.5) * screen_height + 1
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            self.kill()
+
+
+class NodeMob1(pygame.sprite.Sprite):
+    """
+    moves like linemob, but at lower speed
+    generates a "laser wall" between any other NodeMob within a specific range
+    player can be damaged by these walls
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = [100, 100]
+        self.debris_size = 15
+        self.debris_speed = random.randrange(13, 18)
+        self.norm_image = nodemob1_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = nodemob1_hit_anim
+        self.rect = self.image.get_rect()
+        self.speed = random.uniform(4, 6)
+        self.damage = 283
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 100
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = 276
+        self.no_points = False
+
+        self.nodemob_laser_pairs = {}
+
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+        self.rect.x = round(self.abs_x - screen_center[0])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+        self.spawned = False
+        self.spawn_effect = SpawnEffect(self.rect.center, self.size)
+        all_sprites.add(self.spawn_effect)
+        spawns.add(self.spawn_effect)
+
+        self.group.add(self)
+
+    def update(self):
+        if not self.spawned:
+            if self.spawn_effect.complete:
+                self.spawned = True
+                self.spawn_effect.kill()
+                all_mobs.add(self)
+                self.rect.x = round(self.abs_x - screen_center[0])
+                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            return
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+
+            if not (-2 * self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < self.rect.width + (map_size / 2 + 0.5) * screen_width and
+                    -2 * self.rect.height - (map_size / 2 - 0.5) * screen_height < self.abs_y < self.rect.height + (map_size / 2 + 0.5) * screen_height):
+                self.dead = True
+                self.no_points = True
+                new_self = NodeMob1()
+                new_self.hp = self.hp
+                add_single_mob(new_self)
+
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            for nodemob in self.group:
+                if nodemob not in self.nodemob_laser_pairs and nodemob != self and nodemob.spawned:
+                    if distance(self.rect.center, nodemob.rect.center) < 800:
+                        laser = Nodemob1Laser([self, nodemob])
+                        all_sprites.add(laser)
+                        mob_lasers.append(laser)
+                        self.nodemob_laser_pairs[nodemob] = laser
+
+            nodemob_to_delete = []
+            for nodemob in self.nodemob_laser_pairs.keys():
+                if distance(self.rect.center, nodemob.rect.center) > 800:
+                    laser = self.nodemob_laser_pairs[nodemob]
+                    mob_lasers.remove(laser)
+                    laser.kill()
+                    nodemob.remove_by_call(self)
+                    nodemob_to_delete.append(nodemob)
+
+            for nodemob in nodemob_to_delete:
+                del self.nodemob_laser_pairs[nodemob]
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+
+            nodemob_to_delete = []
+            for nodemob in self.nodemob_laser_pairs.keys():
+                laser = self.nodemob_laser_pairs[nodemob]
+                mob_lasers.remove(laser)
+                laser.kill()
+                nodemob.remove_by_call(self)
+                nodemob_to_delete.append(nodemob)
+
+            for nodemob in nodemob_to_delete:
+                del self.nodemob_laser_pairs[nodemob]
+            self.kill()
+
+    def remove_by_call(self, sp):
+        if sp in self.nodemob_laser_pairs.keys():
+            laser = self.nodemob_laser_pairs[sp]
+            mob_lasers.remove(laser)
+            laser.kill()
+            del self.nodemob_laser_pairs[sp]
+
+
+class Nodemob1Laser(pygame.sprite.Sprite):
+    """
+    a laser wall generated between two Nodemobs
+    attacks player continuously when being touched
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self, nodes):
+        pygame.sprite.Sprite.__init__(self)
+        self.nodes = nodes
+        self.color1 = GREEN1
+        self.color2 = WHITE1
+        self.color_list = [self.color1, self.color2]
+        self.color_change = 0
+        self.power = 5      # per frame
+        self.range = 20
+
+        self.group.add(self)
+
+    def update(self):
+        self.color_change = abs(self.color_change - 1)
+        self.color1 = self.color_list[self.color_change]
+
+        if self.nodes[0].dead or self.nodes[1].dead:
+            self.kill()
+
+    def draw(self):
+        pygame.draw.line(screen, self.color1, self.nodes[0].rect.center, self.nodes[1].rect.center, 16)
+        pygame.draw.line(screen, self.color2, self.nodes[0].rect.center, self.nodes[1].rect.center, 8)
+
+
+class SwellerMob1(pygame.sprite.Sprite):
+    """
+    Acts like MoveLineMobs, but gets bigger when get damaged
+
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.min_size = 30
+        self.full_swell_size = 300
+        self.size = [self.min_size] * 2
+        self.debris_size = 35
+        self.debris_speed = random.randrange(13, 34)
+        self.norm_image = swellermob1_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = swellermob1_hit_anim
+        self.rect = self.image.get_rect()
+        self.speed = random.randrange(4, 9)
+        self.damage = 570
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 200
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = 1115
+        self.no_points = False
+
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(map_size / 2 - 0.5) * screen_width),
+                                      (map_size / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
+                                      (map_size / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+        self.rect.centerx = round(self.abs_x - screen_center[0])
+        self.rect.centery = round(self.abs_y - screen_center[1] + field_shift_pos)
+        self.spawned = False
+        self.spawn_effect = SpawnEffect(self.rect.center, [self.size[0], self.size[1]])
+        all_sprites.add(self.spawn_effect)
+        spawns.add(self.spawn_effect)
+
+        self.group.add(self)
+
+    def update(self):
+        if not self.spawned:
+            if self.spawn_effect.complete:
+                self.spawned = True
+                self.spawn_effect.kill()
+                all_mobs.add(self)
+                self.rect.centerx = round(self.abs_x - screen_center[0])
+                self.rect.centery = round(self.abs_y - screen_center[1] + field_shift_pos)
+            return
+
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                self.size = [round(self.min_size + (self.full_swell_size - self.min_size) * (1 - self.hp / self.hp_full))] * 2
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.rect = self.image.get_rect()
+                    self.hitcount += 1
+
+            if not (-3 * self.rect.width - (map_size / 2 - 0.5) * screen_width < self.abs_x < (
+                    map_size / 2 + 0.5) * screen_width + 2 * self.rect.width and
+                    -3 * self.rect.height - (map_size / 2 - 0.5) * screen_height < self.abs_y < (
+                            map_size / 2 + 0.5) * screen_height + 2 * self.rect.height):
+                if self.abs_x <= -3 * self.rect.width - (map_size / 2 - 0.5) * screen_width:
+                    self.abs_x = (map_size / 2 + 0.5) * screen_width + self.rect.width
+                elif self.abs_x >= (map_size / 2 + 0.5) * screen_width + 2 * self.rect.width:
+                    self.abs_x = -2 * self.rect.width - (map_size / 2 - 0.5) * screen_width + 1
+                elif self.abs_y <= -3 * self.rect.height - (map_size / 2 - 0.5) * screen_height:
+                    self.abs_y = (map_size / 2 + 0.5) * screen_height + self.rect.height
+                else:
+                    self.abs_y = -2 * self.rect.height - (map_size / 2 - 0.5) * screen_height
+
+            if random.random() <= 0.04:
+                self.angle = random.uniform(self.angle - math.pi / 2, self.angle + math.pi / 2)
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            self.rect.centerx = round(self.abs_x - screen_center[0])
+            self.rect.centery = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.centerx = round(self.abs_x - screen_center[0])
+            self.rect.centery = round(self.abs_y - screen_center[1] + field_shift_pos)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl = Explosion(self.rect.center, expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            self.kill()
+
+
+class BossLV1(Mob):
+    """
+    level 1 boss
     similar to MoveLineMobs, but has very large size, very low speed, very high hp
     """
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.size = (200, 200)
-        self.debris_size = 40
-        self.debris_speed = 25
-        self.norm_image = boss_lv1_img
-        self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = boss_lv1_hit_anim
-        self.rect = self.image.get_rect()
-        self.speed = 2
-        self.damage = 5000
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 300
-        self.hp_full = 300
-        self.dead = False
-        self.points = 5000
-        self.no_points = False
+        Mob.__init__(self, [200, 200], 40, 25, boss_lv1_img, boss_lv1_hit_anim, 2, 5000, 300, 5000)
         self.type = random.randrange(1, 5)
         if self.type == 1:
             self.abs_x = random.randrange(-(map_size / 2 - 0.5) * screen_width + self.rect.width,
@@ -2951,22 +4243,14 @@ class BossLV1(pygame.sprite.Sprite):
             self.angle = random.uniform(math.pi * 3 / 4, math.pi * 5 / 4)
         self.speedx = self.speed * math.cos(self.angle)
         self.speedy = self.speed * math.sin(self.angle)
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+
+        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
+
         self.in_map = False
 
     def update(self):
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
-                    self.hitcount += 1
+        Mob.update(self)
+        if not self.dead and self.spawned:
             if -(map_size / 2 - 0.5) * screen_width < self.abs_x < (map_size / 2 + 0.5) * screen_width - self.rect.width \
                     and -(map_size / 2 - 0.5) * screen_height < self.abs_y < (map_size / 2 + 0.5) * screen_height - self.rect.height:
                 self.in_map = True
@@ -2978,37 +4262,22 @@ class BossLV1(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+        elif self.dead:
+            global field_shift_magnitude, field_shift_length, field_shake_start
+            field_shift_magnitude = 20
+            field_shift_length = 2
+            field_shake_start = True
+
             item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "upgrade weapon")
             all_sprites.add(item)
             items.add(item)
-            for e in range(random.randrange(5, 8)):
-                expl_type = random.randrange(1, 12)
-                expl = Explosion((random.randrange(self.rect.width) + self.rect.x, random.randrange(self.rect.height) + self.rect.y), expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
-                all_sprites.add(expl)
-                explosions.add(expl)
-            global stage1_clear, stage1_boss_spawned, now_break_1, break_start, phase_text
-            stage1_clear = True
-            stage1_boss_spawned = False
-            pointer.kill()
-            for m in mobs:
-                if random.random() < 0.7:
-                    m.dead = True
-            now_break_1 = True
-            break_start = time.time()
-            phase_text = "{}s BREAKTIME".format(breaktime)
-            self.kill()
 
 
 class BossLV2(pygame.sprite.Sprite):
     """
-    stage 2 boss
+    level 2 boss
     similar to FollowerMob, but has 3 layers of shield
     each shield is made up of "FollowerMobShieldUnit", which will be defined later
     """
@@ -3027,6 +4296,8 @@ class BossLV2(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 500
         self.hp_full = 500
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 7500
         self.no_points = False
@@ -3048,13 +4319,13 @@ class BossLV2(pygame.sprite.Sprite):
             self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
                                           (map_size / 2 + 0.5) * screen_height - self.rect.height)
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.shield_group = pygame.sprite.Group()
-        generate_shield((self.rect.x, self.rect.y), self.size, 5, (30, 30), (10, 10), 8, random.randrange(6, 13), shieldunit1_img, shieldunit1_hit_anim, 6, 2, 20, self.shield_group)
-        generate_shield((self.rect.x, self.rect.y), self.size, 1, (8, 8), (50, 50), 20, random.randrange(10, 18), shieldunit2_img, shieldunit2_hit_anim, 110, 25, 200, self.shield_group)
-        generate_shield((self.rect.x, self.rect.y), self.size, 3, (26, 26), (20, 20), 14, random.randrange(8, 16), shieldunit3_img, shieldunit3_hit_anim, 25, 10, 100, self.shield_group)
+        generate_shield((self.rect.x, self.rect.y), self.size, 5, (30, 30), (10, 10), 8, random.randrange(6, 13), shieldunit1_img, shieldunit1_hit_anim, 6, 2, 2, self.shield_group)
+        generate_shield((self.rect.x, self.rect.y), self.size, 1, (8, 8), (50, 50), 20, random.randrange(10, 18), shieldunit2_img, shieldunit2_hit_anim, 110, 25, 20, self.shield_group)
+        generate_shield((self.rect.x, self.rect.y), self.size, 3, (26, 26), (20, 20), 14, random.randrange(8, 16), shieldunit3_img, shieldunit3_hit_anim, 25, 10, 10, self.shield_group)
 
     def update(self):
         global score
@@ -3062,6 +4333,8 @@ class BossLV2(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -3073,12 +4346,22 @@ class BossLV2(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             self.shield_group.update((self.rect.x, self.rect.y))
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+
+            global field_shift_magnitude, field_shift_length, field_shake_start
+            field_shift_magnitude = 20
+            field_shift_length = 2
+            field_shake_start = True
+
             item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "upgrade weapon")
             all_sprites.add(item)
             items.add(item)
@@ -3090,22 +4373,12 @@ class BossLV2(pygame.sprite.Sprite):
             for s in self.shield_group:
                 s.dead = True
             self.shield_group.update((self.rect.x, self.rect.y))
-            global stage2_clear, stage2_boss_spawned, now_break_2, break_start, phase_text
-            stage2_clear = True
-            stage2_boss_spawned = False
-            pointer.kill()
-            for m in mobs:
-                if random.random() < 0.7:
-                    m.dead = True
-            now_break_2 = True
-            break_start = time.time()
-            phase_text = "{}s BREAKTIME".format(breaktime)
             self.kill()
 
 
 class BossLV3(pygame.sprite.Sprite):
     """
-    stage 3 boss
+    level 3 boss
     similar to MinigunMobs, but has 2 attack patterns: spiral, laser
     """
     def __init__(self):
@@ -3122,7 +4395,9 @@ class BossLV3(pygame.sprite.Sprite):
         self.hit = False
         self.hitcount = 0
         self.hp = 3000
-        self.hp_full = 3000
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 12500
         self.no_points = False
@@ -3154,7 +4429,7 @@ class BossLV3(pygame.sprite.Sprite):
             self.speedx = -self.speed
             self.speedy = 0
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.in_map = False
 
     def update(self):
@@ -3163,6 +4438,8 @@ class BossLV3(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -3223,7 +4500,7 @@ class BossLV3(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
             if not self.minigun_attack and random.random() < 0.005:
                 self.minigun_attack = True
@@ -3270,13 +4547,22 @@ class BossLV3(pygame.sprite.Sprite):
                     if self.current_bullets <= 0:
                         self.minigun_attack = False
 
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt,
                       self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            global field_shift_magnitude, field_shift_length, field_shake_start
+            field_shift_magnitude = 20
+            field_shift_length = 2
+            field_shake_start = True
+
             item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]],
                         "upgrade weapon")
             all_sprites.add(item)
@@ -3288,16 +4574,6 @@ class BossLV3(pygame.sprite.Sprite):
                                  (round(self.size[0]), round(self.size[1])))
                 all_sprites.add(expl)
                 explosions.add(expl)
-            global stage3_clear, stage3_boss_spawned, now_break_3, break_start, phase_text
-            stage3_clear = True
-            stage3_boss_spawned = False
-            pointer.kill()
-            for m in mobs:
-                if random.random() < 0.7:
-                    m.dead = True
-            now_break_3 = True
-            break_start = time.time()
-            phase_text = "{}s BREAKTIME".format(breaktime)
             self.kill()
 
     def generate_mobs(self):
@@ -3306,7 +4582,7 @@ class BossLV3(pygame.sprite.Sprite):
 
 class BossLV4(pygame.sprite.Sprite):
     """
-    stage 4 boss
+    level 4 boss
     moves toward player
     protected by 12 shells
     3 attack patterns: cannon, generating child mobs, boosting
@@ -3331,6 +4607,8 @@ class BossLV4(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 1500
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 20000
         self.no_points = False
@@ -3369,7 +4647,7 @@ class BossLV4(pygame.sprite.Sprite):
             self.abs_y = random.randrange(round(-(map_size / 2 - 0.5) * screen_height),
                                           (map_size / 2 + 0.5) * screen_height - self.rect.height)
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.in_map = False
@@ -3408,6 +4686,8 @@ class BossLV4(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -3428,7 +4708,7 @@ class BossLV4(pygame.sprite.Sprite):
                 self.abs_x += self.speedx
                 self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
             if not self.attack and random.random() < 0.005 and self.in_map:
                 self.attack = True
@@ -3565,14 +4845,14 @@ class BossLV4(pygame.sprite.Sprite):
                                     angle = math.atan2(dist_y, dist_x)
                                     for c in range(random.randrange(30, 40)):
                                         direction = random.uniform(angle + math.pi / 6, angle + math.pi * 11 / 6)
-                                        child = BossLV4Child((random.randrange(self.rect.width / 5) + self.abs_x + self.rect.width * 2 / 5, random.randrange(self.rect.height / 5) + self.abs_y + self.rect.height * 2 / 5), direction, "attack")
+                                        child = BossLV4Child((random.randrange(self.rect.width / 5) + self.abs_x + self.rect.width * 2 / 5, random.randrange(self.rect.height / 5) + self.abs_y + self.rect.height * 2 / 5), direction, "attack", self)
                                         all_sprites.add(child)
                                         all_mobs.add(child)
                                         self.attack_childs.add(child)
                                 elif len(self.shield_childs) < 400:
                                     for c in range(random.randrange(100, 130)):
                                         direction = random.uniform(0, 2 * math.pi)
-                                        child = BossLV4Child((random.randrange(self.rect.width / 5) + self.abs_x + self.rect.width * 2 / 5, random.randrange(self.rect.height / 5) + self.abs_y + self.rect.height * 2 / 5), direction, "shield")
+                                        child = BossLV4Child((random.randrange(self.rect.width / 5) + self.abs_x + self.rect.width * 2 / 5, random.randrange(self.rect.height / 5) + self.abs_y + self.rect.height * 2 / 5), direction, "shield", self)
                                         all_sprites.add(child)
                                         all_mobs.add(child)
                                         self.shield_childs.add(child)
@@ -3594,7 +4874,7 @@ class BossLV4(pygame.sprite.Sprite):
                                 angle = math.atan2(dist_y, dist_x) + random.uniform(-0.1, 0.1) * math.pi
                                 start_angle = angle - math.pi / 2
                                 while start_angle < angle + math.pi / 2:
-                                    cannonball = MobCannonBall1(self.rect.center, start_angle, 47, 12)
+                                    cannonball = MobExplodingCannonBall1(self.rect.center, start_angle, 47, 12)
                                     all_sprites.add(cannonball)
                                     mob_cannon_balls.add(cannonball)
                                     start_angle += math.pi / 14
@@ -3662,7 +4942,7 @@ class BossLV4(pygame.sprite.Sprite):
                         self.abs_x += self.speedx
                         self.abs_y += self.speedy
                         self.rect.x = round(self.abs_x - screen_center[0])
-                        self.rect.y = round(self.abs_y - screen_center[1])
+                        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
                     if not self.in_map and not self.reflected:
                         if self.abs_x <= -(map_size / 2 - 0.5) * screen_width or self.abs_x >= (
                                 map_size / 2 + 0.5) * screen_width - self.rect.width:
@@ -3714,7 +4994,7 @@ class BossLV4(pygame.sprite.Sprite):
                     dist_x = player.rect.center[0] - self.rect.center[0]
                     dist_y = player.rect.center[1] - self.rect.center[1]
                     angle = math.atan2(dist_y, dist_x) + random.uniform(-math.pi / 9, math.pi / 9)
-                    cannonball = MobCannonBall1(self.rect.center, angle, 47, 12)
+                    cannonball = MobExplodingCannonBall1(self.rect.center, angle, 47, 12)
                     all_sprites.add(cannonball)
                     mob_cannon_balls.add(cannonball)
                     self.cannon_fired = time.time()
@@ -3722,14 +5002,23 @@ class BossLV4(pygame.sprite.Sprite):
                     if not s.dead:
                         s.update(self.rect.center)
 
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt,
                       self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if len(self.shells) <= 0:
+
+                global field_shift_magnitude, field_shift_length, field_shake_start
+                field_shift_magnitude = 20
+                field_shift_length = 2
+                field_shake_start = True
+
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]],
                             "upgrade weapon")
                 all_sprites.add(item)
@@ -3741,16 +5030,6 @@ class BossLV4(pygame.sprite.Sprite):
                                      (round(self.size[0]), round(self.size[1])))
                     all_sprites.add(expl)
                     explosions.add(expl)
-                global stage4_clear, stage4_boss_spawned, now_break_4, break_start, phase_text
-                stage4_clear = True
-                stage4_boss_spawned = False
-                pointer.kill()
-                for m in mobs:
-                    if random.random() < 0.7:
-                        m.dead = True
-                now_break_4 = True
-                break_start = time.time()
-                phase_text = "{}s BREAKTIME".format(breaktime)
                 self.kill()
             for s in self.shells:
                 if not s.dead:
@@ -3778,6 +5057,8 @@ class BossLV4Shell(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = hp
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 3000
         self.no_points = False
@@ -3825,6 +5106,8 @@ class BossLV4Shell(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -3869,6 +5152,10 @@ class BossLV4Shell(pygame.sprite.Sprite):
                 self.abs_y = pos[1] + self.size[1] // 2
             self.rect.x = round(self.abs_x)
             self.rect.y = round(self.abs_y)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -3887,7 +5174,7 @@ class BossLV4Shell(pygame.sprite.Sprite):
 
 
 class BossLV4Child(pygame.sprite.Sprite):
-    def __init__(self, abs_pos, direction, mode):
+    def __init__(self, abs_pos, direction, mode, mother_boss):
         pygame.sprite.Sprite.__init__(self)
         self.mode = mode
         self.size = [18, 18]
@@ -3905,13 +5192,17 @@ class BossLV4Child(pygame.sprite.Sprite):
         self.hitcount = 0
         self.hp = 2
         self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = 40
         self.no_points = False
+
+        self.mother_boss = mother_boss
         self.abs_x = abs_pos[0]
         self.abs_y = abs_pos[1]
         self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         self.speedx = self.speed * math.cos(self.dir)
         self.speedy = self.speed * math.sin(self.dir)
         self.dist_x = 0
@@ -3920,8 +5211,8 @@ class BossLV4Child(pygame.sprite.Sprite):
             self.dist_x = player.rect.center[0] - self.rect.center[0]
             self.dist_y = player.rect.center[1] - self.rect.center[1]
         elif self.mode == "shield":
-            self.dist_x = boss.rect.center[0] - self.rect.center[0]
-            self.dist_y = boss.rect.center[1] - self.rect.center[1]
+            self.dist_x = self.mother_boss.rect.center[0] - self.rect.center[0]
+            self.dist_y = self.mother_boss.rect.center[1] - self.rect.center[1]
         self.acc_dir = math.atan2(self.dist_y, self.dist_x)
         self.acc = random.uniform(0.2, 0.4)
         self.acc_x = self.acc * math.cos(self.acc_dir)
@@ -3933,6 +5224,8 @@ class BossLV4Child(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -3946,13 +5239,13 @@ class BossLV4Child(pygame.sprite.Sprite):
                 self.acc_x = self.acc * math.cos(self.acc_dir)
                 self.acc_y = self.acc * math.sin(self.acc_dir)
             elif self.mode == "shield":
-                self.dist_x = boss.rect.center[0] - self.rect.center[0]
-                self.dist_y = boss.rect.center[1] - self.rect.center[1]
+                self.dist_x = self.mother_boss.rect.center[0] - self.rect.center[0]
+                self.dist_y = self.mother_boss.rect.center[1] - self.rect.center[1]
                 self.acc_dir = math.atan2(self.dist_y, self.dist_x)
-                if distance(boss.rect.center, self.rect.center) <= 400:
+                if distance(self.mother_boss.rect.center, self.rect.center) <= 400:
                     self.acc_x = 0
                     self.acc_y = 0
-                elif distance(boss.rect.center, self.rect.center) >= 400:
+                elif distance(self.mother_boss.rect.center, self.rect.center) >= 400:
                     self.acc_x = self.acc * math.cos(self.acc_dir)
                     self.acc_y = self.acc * math.sin(self.acc_dir)
             self.speedx = min(self.speedx + self.acc_x, self.max_speed)
@@ -3960,7 +5253,11 @@ class BossLV4Child(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -3976,6 +5273,373 @@ class BossLV4Child(pygame.sprite.Sprite):
             self.kill()
 
 
+class BossLV5(pygame.sprite.Sprite):
+    """
+    level 5 boss
+    similar to orbitmobs
+    always at the center
+    has many orbits and orbitmobs
+    """
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = (400, 400)
+        self.debris_size = 40
+        self.debris_speed = 25
+        self.phase1_image = boss_lv5_phase1_img
+        self.phase2_image = boss_lv5_phase2_img
+        self.image = pygame.transform.scale(self.phase1_image, self.size)
+        self.phase1_hit_anim = boss_lv5_phase1_hit_anim
+        self.phase2_hit_anim = boss_lv5_phase2_hit_anim
+        self.hit_anim = self.phase1_hit_anim
+        self.rect = self.image.get_rect()
+        self.speed = 4
+        self.damage = 30000
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 4000
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = 40000
+        self.no_points = False
+        self.phase = 1
+        self.stop = False
+
+        self.orbiter = None
+        self.opposite = True
+        self.orbit1_orbiters = pygame.sprite.Group()            # outer orbit
+        self.orbit2_orbiters = pygame.sprite.Group()            # middle1 orbit
+        self.orbit3_orbiters = pygame.sprite.Group()            # middle2 orbit
+        self.orbit4_orbiters = pygame.sprite.Group()            # inner orbit
+        self.straight_line_orbiters = pygame.sprite.Group()     # straight-line orbit
+        self.sinusoidal_orbiters = pygame.sprite.Group()        # sinusoidal orbit
+        self.generate_sinusoidal_orbit = False
+        self.sinusoidal_orbiter_generating_angle = 0
+        self.sinusoidal_orbiter_current_generating_angle_index = 0
+
+        self.cannon_spread_attack = False
+        self.cannon_spread_attack_time = 10
+        self.cannon_spread_attack_start_time = 0
+
+        self.type = random.randrange(1, 5)
+        if self.type == 1:
+            self.abs_x = screen_width // 2 - self.rect.width // 2
+            self.abs_y = -(map_size / 2 - 0.5) * screen_height - 1800 - self.rect.height // 2
+            self.speedx = 0
+            self.speedy = self.speed
+        elif self.type == 2:
+            self.abs_x = screen_width // 2 - self.rect.width // 2
+            self.abs_y = (map_size / 2 + 0.5) * screen_height + 1800 - self.rect.height // 2
+            self.speedx = 0
+            self.speedy = -self.speed
+        elif self.type == 3:
+            self.abs_x = -(map_size / 2 - 0.5) * screen_width - 1200 - self.rect.width // 2
+            self.abs_y = screen_height // 2 - self.rect.height // 2
+            self.speedx = self.speed
+            self.speedy = 0
+        else:
+            self.abs_x = (map_size / 2 + 0.5) * screen_width + 1200 - self.rect.width // 2
+            self.abs_y = screen_height // 2 - self.rect.height // 2
+            self.speedx = -self.speed
+            self.speedy = 0
+        self.rect.x = round(self.abs_x - screen_center[0])
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+        for num in range(120):
+            self.orbiter = BossLV5Orbiter(self.rect.center, 1200, 0.003, num * 2 * math.pi / 120, 3, self.opposite)
+            self.orbit1_orbiters.add(self.orbiter)
+            all_mobs.add(self.orbiter)
+            self.opposite = not self.opposite
+
+        for num in range(90):
+            self.orbiter = BossLV5Orbiter(self.rect.center, 900, 0.005, num * 2 * math.pi / 90, 3, self.opposite)
+            self.orbit2_orbiters.add(self.orbiter)
+            all_mobs.add(self.orbiter)
+            self.opposite = not self.opposite
+
+        for num in range(60):
+            self.orbiter = BossLV5Orbiter(self.rect.center, 600, 0.007, num * 2 * math.pi / 60, 3, self.opposite)
+            self.orbit3_orbiters.add(self.orbiter)
+            all_mobs.add(self.orbiter)
+            self.opposite = not self.opposite
+
+        for num in range(30):
+            self.orbiter = BossLV5Orbiter(self.rect.center, 300, 0.01, num * 2 * math.pi / 30, 3, self.opposite)
+            self.orbit4_orbiters.add(self.orbiter)
+            all_mobs.add(self.orbiter)
+            self.opposite = not self.opposite
+
+        self.spawned_time = time.time()
+
+
+    def update(self):
+        global score
+        if self.hp <= 0:
+            if self.phase == 2:
+                self.dead = True
+            else:
+                self.phase += 1
+                self.hp_full = 6000
+                self.hp = self.hp_full
+                self.image = pygame.transform.scale(self.phase2_image, self.size)
+                self.hit_anim = self.phase2_hit_anim
+
+                global field_shift_magnitude, field_shift_length, field_shake_start
+                field_shift_magnitude = 20
+                field_shift_length = 2
+                field_shake_start = True
+
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt,
+                      self.debris_speed)
+
+                for e in range(random.randrange(5, 8)):
+                    expl_type = random.randrange(1, 12)
+                    expl = Explosion((random.randrange(self.rect.width) + self.rect.x, random.randrange(self.rect.height) + self.rect.y), expl_type, (self.size[0], self.size[1]))
+                    all_sprites.add(expl)
+                    explosions.add(expl)
+
+        if not self.dead:
+            if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+
+            if not self.stop:
+                if time.time() - self.spawned_time >= 25:
+                    self.speedx = 0
+                    self.speedy = 0
+                    self.stop = True
+
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            # ganerate outer orbit
+            if len(self.orbit1_orbiters) <= 60:
+                for num in range(120):
+                    self.orbiter = BossLV5Orbiter(self.rect.center, 1200, 0.003, num * 2 * math.pi / 120, 3, self.opposite)
+                    self.orbit1_orbiters.add(self.orbiter)
+                    all_mobs.add(self.orbiter)
+                    self.opposite = not self.opposite
+            for orbiter in self.orbit1_orbiters:
+                orbiter.update(self.rect.center)
+
+            # ganerate middle1 orbit
+            if len(self.orbit2_orbiters) <= 45:
+                for num in range(90):
+                    self.orbiter = BossLV5Orbiter(self.rect.center, 900, 0.005, num * 2 * math.pi / 90, 3, self.opposite)
+                    self.orbit2_orbiters.add(self.orbiter)
+                    all_mobs.add(self.orbiter)
+                    self.opposite = not self.opposite
+            for orbiter in self.orbit2_orbiters:
+                orbiter.update(self.rect.center)
+
+            # ganerate middle2 orbit
+            if len(self.orbit3_orbiters) <= 30:
+                for num in range(60):
+                    self.orbiter = BossLV5Orbiter(self.rect.center, 600, 0.007, num * 2 * math.pi / 60, 3, self.opposite)
+                    self.orbit3_orbiters.add(self.orbiter)
+                    all_mobs.add(self.orbiter)
+                    self.opposite = not self.opposite
+            for orbiter in self.orbit3_orbiters:
+                orbiter.update(self.rect.center)
+
+            # ganerate middle2 orbit
+            if len(self.orbit4_orbiters) <= 15:
+                for num in range(30):
+                    self.orbiter = BossLV5Orbiter(self.rect.center, 300, 0.01, num * 2 * math.pi / 30, 3, self.opposite)
+                    self.orbit4_orbiters.add(self.orbiter)
+                    all_mobs.add(self.orbiter)
+                    self.opposite = not self.opposite
+            for orbiter in self.orbit4_orbiters:
+                orbiter.update(self.rect.center)
+
+            # generate straight-line orbit
+            if len(self.straight_line_orbiters) <= 100 and random.random() < 0.001 and self.stop:
+                self.opposite = random.choice([True, False])
+                speed = random.uniform(0.006, 0.012)
+                angle = random.uniform(-math.pi, math.pi)
+                for num in range(25):
+                    self.orbiter = BossLV5Orbiter(self.rect.center, 200 + num * 40, speed, angle, 10, self.opposite)
+                    self.straight_line_orbiters.add(self.orbiter)
+                    all_mobs.add(self.orbiter)
+            for orbiter in self.straight_line_orbiters:
+                orbiter.update(self.rect.center)
+
+            # generate sinusoidal orbit
+            if self.phase == 2:
+                if random.random() < 0.005 and not self.generate_sinusoidal_orbit and len(self.sinusoidal_orbiters) <= 60:
+                    self.opposite = random.choice([True, False])
+                    self.sinusoidal_orbiter_generating_angle = random.uniform(-math.pi, math.pi)
+                    self.sinusoidal_orbiter_current_generating_angle_index = 0
+                    self.generate_sinusoidal_orbit = True
+
+                if self.generate_sinusoidal_orbit:
+                    self.orbiter = BossLV5Orbiter(self.rect.center, 750, 0.005, self.sinusoidal_orbiter_generating_angle + self.sinusoidal_orbiter_current_generating_angle_index * 2 * math.pi / 120, 10, self.opposite, True)
+                    self.sinusoidal_orbiters.add(self.orbiter)
+                    all_mobs.add(self.orbiter)
+                    self.sinusoidal_orbiter_current_generating_angle_index += 1
+
+                    if len(self.sinusoidal_orbiters) >= 120:
+                        self.generate_sinusoidal_orbit = False
+
+                for orbiter in self.sinusoidal_orbiters:
+                    orbiter.update(self.rect.center)
+
+            # spread cannonballs
+            if random.random() < 0.0005 and self.stop:
+                self.cannon_spread_attack = True
+                self.cannon_spread_attack_start_time = time.time()
+            if self.cannon_spread_attack:
+                for num in range(3):
+                    cannonball = MobExplodingCannonBall1(self.rect.center, random.uniform(-math.pi, math.pi), 46, 8)
+                    all_sprites.add(cannonball)
+                    mob_cannon_balls.add(cannonball)
+                if time.time() - self.cannon_spread_attack_start_time >= self.cannon_spread_attack_time:
+                    self.cannon_spread_attack = False
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+            field_shift_magnitude = 20
+            field_shift_length = 2
+            field_shake_start = True
+
+            item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "upgrade weapon")
+            all_sprites.add(item)
+            items.add(item)
+            for e in range(random.randrange(5, 8)):
+                expl_type = random.randrange(1, 12)
+                expl = Explosion((random.randrange(self.rect.width) + self.rect.x, random.randrange(self.rect.height) + self.rect.y), expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
+                all_sprites.add(expl)
+                explosions.add(expl)
+            self.kill()
+
+
+class BossLV5Orbiter(pygame.sprite.Sprite):
+    """
+    orbiter of boss lv5
+    circles around mothership and attacks player with cannonball
+    """
+    def __init__(self, pos, max_distance, max_angular_speed, angular_pos, orthogonal_speed, opposite=False, move_sinusoidal=False):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = [40, 40]
+        self.debris_size = 10
+        self.debris_speed = random.randrange(5, 9)
+        self.norm_image = boss_lv5_orbiter_img
+        self.image = pygame.transform.scale(self.norm_image, self.size)
+        self.hit_anim = boss_lv5_orbiter_hit_anim
+        self.rect = self.image.get_rect()
+        self.damage = 90
+        self.hit = False
+        self.hitcount = 0
+        self.hp = 25
+        self.hp_full = self.hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
+        self.dead = False
+        self.points = 56
+        self.no_points = False
+
+        self.reached_max_angular_speed = False
+        self.on_orbit = False
+        self.orthogonal_speed = orthogonal_speed
+        self.max_distance_to_mothership = max_distance
+        self.distance_to_mothership = 0
+        self.angular_pos = angular_pos
+        self.max_angular_speed = max_angular_speed
+        self.angular_speed = 0
+        self.relative_x = self.distance_to_mothership * math.cos(self.angular_pos)
+        self.relative_y = self.distance_to_mothership * math.sin(self.angular_pos)
+        self.opposite = -1 if opposite else 1
+
+        self.move_sinusoidal = move_sinusoidal
+        self.sinusoidal_movement_angular_pos = 0
+        self.sinusoidal_movement_period = 6
+
+        self.abs_x = pos[0] + self.relative_x - self.rect.width // 2
+        self.abs_y = pos[1] + self.relative_y - self.rect.height // 2
+        self.rect.x = round(self.abs_x)
+        self.rect.y = round(self.abs_y + field_shift_pos)
+
+    def update(self, pos=(0, 0)):
+        global score
+        if self.hp <= 0:
+            self.dead = True
+        if not self.dead:
+            if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
+                if self.hitcount >= len(self.hit_anim):
+                    self.hitcount = 0
+                    self.hit = False
+                else:
+                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
+                    self.hitcount += 1
+
+            if not self.reached_max_angular_speed:
+                if self.angular_speed >= self.max_angular_speed:
+                    self.reached_max_angular_speed = True
+                self.angular_speed += 0.001
+
+            if not self.on_orbit:
+                self.distance_to_mothership += self.orthogonal_speed
+                if self.distance_to_mothership >= self.max_distance_to_mothership:
+                    self.on_orbit = True
+
+            if self.move_sinusoidal and self.on_orbit:
+                self.distance_to_mothership = self.max_distance_to_mothership + 450 * math.sin(2 * math.pi * self.sinusoidal_movement_angular_pos / (30 * self.sinusoidal_movement_period))
+                self.sinusoidal_movement_angular_pos += 1
+
+            self.angular_pos += self.opposite * self.angular_speed
+            self.relative_x = self.distance_to_mothership * math.cos(self.angular_pos)
+            self.relative_y = self.distance_to_mothership * math.sin(self.angular_pos)
+            self.abs_x = pos[0] + self.relative_x - self.rect.width // 2
+            self.abs_y = pos[1] + self.relative_y - self.rect.height // 2
+            self.rect.x = round(self.abs_x)
+            self.rect.y = round(self.abs_y)
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
+        else:
+            if not self.no_points:
+                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+            self.rect.x = round(self.abs_x)
+            self.rect.y = round(self.abs_y)
+            if random.random() <= 0.02:
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "regenerate")
+                all_sprites.add(item)
+                items.add(item)
+            expl_type = random.randrange(1, 12)
+            expl_size = max(self.size)
+            expl = Explosion(self.rect.center, expl_type, (round(expl_size * 1.5), round(expl_size * 1.5)))
+            all_sprites.add(expl)
+            explosions.add(expl)
+            self.kill()
+
+    def attack(self):
+        cannonball = MobChargingCannonBall1(self.rect.center, 36, 12, self)
+        all_sprites.add(cannonball)
+        mob_cannon_balls.add(cannonball)
+
+
 class FollowerMobShieldUnit(pygame.sprite.Sprite):
     def __init__(self, master_pos, pos, size, debris_size, debris_speed, image, hit_anim, damage, hp, points):
         pygame.sprite.Sprite.__init__(self)
@@ -3988,12 +5652,14 @@ class FollowerMobShieldUnit(pygame.sprite.Sprite):
         self.hit_anim = hit_anim
         self.rect = self.image.get_rect()
         self.rect.x = master_pos[0] + self.pos[0]
-        self.rect.y = master_pos[1] + self.pos[1]
+        self.rect.y = round(master_pos[1] + self.pos[1] + field_shift_pos)
         self.damage = damage
         self.hit = False
         self.hitcount = 0
         self.hp = hp
         self.hp_full = hp
+        self.hp_bar_show = False
+        self.hp_bar_show_start_time = 0
         self.dead = False
         self.points = points
         self.no_points = False
@@ -4004,6 +5670,8 @@ class FollowerMobShieldUnit(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
+                self.hp_bar_show = True
+                self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
                     self.hit = False
@@ -4012,6 +5680,10 @@ class FollowerMobShieldUnit(pygame.sprite.Sprite):
                     self.hitcount += 1
             self.rect.x = master_pos[0] + self.pos[0]
             self.rect.y = master_pos[1] + self.pos[1]
+
+            if time.time() - self.hp_bar_show_start_time > 3:
+                self.hp_bar_show = False
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -4067,7 +5739,7 @@ class SpawnEffect(pygame.sprite.Sprite):
             self.image = pygame.transform.scale(spawneffect_anim[self.frame], self.size)
             self.rect = self.image.get_rect()
             self.rect.x = self.abs_x - screen_center[0]
-            self.rect.y = self.abs_y - screen_center[1]
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
 
 class HitEffect(pygame.sprite.Sprite):
@@ -4092,7 +5764,7 @@ class HitEffect(pygame.sprite.Sprite):
             self.image = pygame.transform.scale(hiteffect_anim[self.frame], self.size)
             self.rect = self.image.get_rect()
             self.rect.x = self.abs_x - screen_center[0]
-            self.rect.y = self.abs_y - screen_center[1]
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
 
 class Explosion(pygame.sprite.Sprite):
@@ -4119,7 +5791,7 @@ class Explosion(pygame.sprite.Sprite):
             self.image = pygame.transform.scale(explosion_anim[str(self.type)][self.frame], self.size)
             self.rect = self.image.get_rect()
             self.rect.x = self.abs_x - screen_center[0]
-            self.rect.y = self.abs_y - screen_center[1]
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
 
 class Debris(pygame.sprite.Sprite):
@@ -4164,7 +5836,7 @@ class Debris(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if distance(self.rect.center, player.rect.center) <= 15:
                 global score
                 score += self.points
@@ -4173,7 +5845,7 @@ class Debris(pygame.sprite.Sprite):
             self.abs_x += self.speedx
             self.abs_y += self.speedy
             self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if self.speed > 0:
                 self.speed -= 1
             self.speedx = self.speed * math.cos(self.direction)
@@ -4219,7 +5891,7 @@ class Item(pygame.sprite.Sprite):
 
     def update(self):
         self.rect.x = self.abs_x - screen_center[0]
-        self.rect.y = self.abs_y - screen_center[1]
+        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
         current_time = time.time()
         if current_time - self.droptime >= 10:
             self.kill()
@@ -4230,7 +5902,176 @@ class Item(pygame.sprite.Sprite):
             if player.hp > player.hp_full:
                 player.hp = player.hp_full
         elif self.type == "upgrade weapon":
-            player.weapon_lvl += 1
+            player.main_weapon_lvl += 1
+
+
+class Level:
+    def __init__(self, level_num, buttonpos, boss_mob, boss_phase):
+        self.level = level_num
+        self.buttonpos = buttonpos
+        self.boss_class = boss_mob
+        self.boss = boss_mob
+        self.boss_phase = boss_phase
+        self.pointer = None
+
+        self.mob_score = 0
+        self.mob_start_score = 0
+        self.score = 0
+        self.start_score = 0
+        self.mob_playtime = 0
+        self.mob_start_time = 0
+        self.boss_playtime = 0
+        self.boss_start_time = 0
+        self.playtime = 0
+        self.start_time = 0
+        self.mob_avg_score = 0
+        self.avg_score = 0
+
+        self.break_start_time = 0
+
+        self.phases = []
+        self.phase_bound_orig = [0]
+        self.phase_bound = [0]
+        self.phase_num = 0
+        self.phase_text = "LEVEL {} / PHASE {}".format(self.level, self.phase_num + 1)
+        self.boss_challenging = False
+        self.clear = False
+        self.quit = False
+
+        self.start_button = Button(self.buttonpos, WHITE1, "Start from LEVEL {}".format(self.level), 20)
+        all_buttons.add(self.start_button)
+
+    def add_phase(self, moblist, mob_count_list, phase_bound_value, kill_all_after_phase=False):
+        new_phase = Phase(moblist, mob_count_list, kill_all_after_phase)
+        self.phases.append(new_phase)
+        self.phase_bound_orig.append(phase_bound_value)
+        self.phase_bound.append(phase_bound_value)
+
+    def initialize_level(self):
+        global score
+        self.phase_bound = self.phase_bound_orig.copy()
+        for phase_bound_value in range(len(self.phase_bound)):
+            self.phase_bound[phase_bound_value] = self.phase_bound_orig[phase_bound_value] + score
+        self.phase_num = 0
+        self.phase_text = "LEVEL {} / PHASE {}".format(self.level, self.phase_num + 1)
+
+        self.score = 0
+        self.playtime = 0
+        self.avg_score = 0
+        self.mob_score = 0
+        self.mob_playtime = 0
+        self.mob_avg_score = 0
+        self.boss_playtime = 0
+        self.start_score = score
+        self.mob_start_score = score
+        self.start_time = time.time()
+        self.mob_start_time = time.time()
+        self.boss_challenging = False
+        self.clear = False
+        self.quit = False
+
+        self.boss = self.boss_class
+
+        global now_upgrading
+        now_upgrading = True
+
+    def update(self):
+        global score
+        self.score = score - self.start_score
+        self.playtime = time.time() - self.start_time - total_paused_length
+        self.avg_score = self.score / self.playtime
+
+        if not self.clear:
+            if self.phase_num < len(self.phase_bound) - 1:
+                if score < self.phase_bound[self.phase_num + 1]:
+                    self.phases[self.phase_num].update()
+                else:
+                    if self.phases[self.phase_num].kill_all_after_phase:
+                        for mobgroup in self.phases[self.phase_num].mobgroup_list:
+                            for objs in mobgroup:
+                                objs.no_points = True
+                                objs.dead = True
+                    self.phase_num += 1
+                    self.phase_text = "LEVEL {} / PHASE {}".format(self.level, self.phase_num + 1)
+                    if self.phase_num == len(self.phase_bound) - 1:
+                        self.mob_score = score - self.mob_start_score
+                        self.mob_playtime = time.time() - self.mob_start_time
+                        self.start_boss_challenge()
+            else:
+                self.boss_phase.update()
+
+                if random.random() < 0.004:
+                    global field_shift_magnitude, field_shift_length, field_vibrate_start
+                    field_shift_magnitude = 2
+                    field_shift_length = 1.5
+                    field_vibrate_start = True
+
+                self.boss_playtime = time.time() - self.boss_start_time - total_paused_length
+                if self.boss.dead:
+                    self.boss_challenging = False
+                    for mobgroup in self.boss_phase.mobgroup_list:
+                        for objs in mobgroup:
+                            if random.random() < 0.8:
+                                objs.dead = True
+                    self.clear = True
+                    self.start_break()
+        else:
+            if time.time() - self.break_start_time >= breaktime:
+                self.score = score - self.start_score
+                self.playtime = time.time() - self.start_time
+                self.avg_score = self.score / self.playtime
+                self.quit = True
+
+
+    def start_boss_challenge(self):
+        self.mob_score = score - self.mob_start_score
+        self.mob_playtime = time.time() - self.mob_start_time - total_paused_length
+        self.mob_avg_score = self.mob_score / self.mob_playtime
+
+        self.phase_text = "LEVEL {} / BOSS CHALLENGE".format(self.level)
+        self.boss_start_time = time.time()
+        self.boss = self.boss()
+        all_sprites.add(self.boss)
+        mobs.add(self.boss)
+        all_mobs.add(self.boss)
+        self.pointer = BossPointer(self.boss)
+        all_sprites.add(self.pointer)
+        players.add(self.pointer)
+        self.boss_challenging = True
+
+    def start_break(self):
+        self.boss_playtime = time.time() - self.boss_start_time - total_paused_length
+
+        self.phase_text = "{}s BREAKTIME".format(breaktime)
+        self.break_start_time = time.time()
+        self.pointer.kill()
+
+
+class Phase:
+    def __init__(self, moblist, mob_count_list, kill_all_after_phase=False):
+        self.moblist = moblist
+        self.mobgroup_list = [mob.group for mob in self.moblist]
+        self.mob_count_list = mob_count_list
+        self.kill_all_after_phase = kill_all_after_phase
+
+    def update(self):
+        for index in range(len(self.moblist)):
+            if self.moblist[index] == WallMobUnit1:
+                if len(WallMobUnit1.group) < self.mob_count_list[index]:
+                    generate_wall((40, 1), (40, 40), 1, WallMobUnit1.group)
+            elif self.moblist[index] == WallMobUnit2:
+                if len(WallMobUnit2.group) < self.mob_count_list[index]:
+                    generate_wall((40, 2), (40, 40), 2, WallMobUnit2.group)
+            elif self.moblist[index] == WallMobUnit3:
+                if len(WallMobUnit3.group) < self.mob_count_list[index]:
+                    generate_wall((20, 3), (70, 70), 3, WallMobUnit3.group)
+
+            elif len(self.mobgroup_list[index]) < self.mob_count_list[index]:
+                add_single_mob(self.moblist[index]())
+
+
+def draw_hp_bar(sprite):
+    pygame.draw.rect(screen, GREEN1, [sprite.rect.x, sprite.rect.y - 10, max(0, round(sprite.rect.width * sprite.hp / sprite.hp_full)), 5])
 
 
 pygame.init()
@@ -4260,9 +6101,15 @@ linemob1_hit_anim = [linemob1_hit_img, linemob1_img] * 3
 linemob2_img = pygame.image.load(path.join(char_dir, "linemob2.png")).convert()
 linemob2_hit_img = pygame.image.load(path.join(char_dir, "linemob2_hit.png")).convert()
 linemob2_hit_anim = [linemob2_hit_img, linemob2_img] * 3
+linemob2_armored_img = pygame.image.load(path.join(char_dir, "linemob2_armored.png")).convert()
+linemob2_armored_hit_img = pygame.image.load(path.join(char_dir, "linemob2_armored_hit.png")).convert()
+linemob2_armored_hit_anim = [linemob2_armored_hit_img, linemob2_armored_img] * 3
 linemob3_img = pygame.image.load(path.join(char_dir, "linemob3.png")).convert()
 linemob3_hit_img = pygame.image.load(path.join(char_dir, "linemob3_hit.png")).convert()
 linemob3_hit_anim = [linemob3_hit_img, linemob3_img] * 3
+linemob3_armored_img = pygame.image.load(path.join(char_dir, "linemob3_armored.png")).convert()
+linemob3_armored_hit_img = pygame.image.load(path.join(char_dir, "linemob3_armored_hit.png")).convert()
+linemob3_armored_hit_anim = [linemob3_armored_hit_img, linemob3_armored_img] * 3
 
 wallmob1_img = pygame.image.load(path.join(char_dir, "wallmob1.png")).convert()
 wallmob1_hit_img = pygame.image.load(path.join(char_dir, "wallmob1_hit.png")).convert()
@@ -4355,6 +6202,30 @@ barricademob1_charge4_hit_anim = [barricademob1_charge4_hit_img, barricademob1_c
 barricade_horizontal_img = pygame.image.load(path.join(char_dir, "barricade_horizontal.png")).convert()
 barricade_vertical_img = pygame.image.load(path.join(char_dir, "barricade_vertical.png")).convert()
 
+orbitmob1_mothership_img = pygame.image.load(path.join(char_dir, "orbitmob1_mothership.png")).convert()
+orbitmob1_mothership_hit_img = pygame.image.load(path.join(char_dir, "orbitmob1_mothership_hit.png")).convert()
+orbitmob1_mothership_hit_anim = [orbitmob1_mothership_hit_img, orbitmob1_mothership_img] * 3
+orbitmob1_orbiter_img = pygame.image.load(path.join(char_dir, "orbitmob1_orbiter.png")).convert()
+orbitmob1_orbiter_hit_img = pygame.image.load(path.join(char_dir, "orbitmob1_orbiter_hit.png")).convert()
+orbitmob1_orbiter_hit_anim = [orbitmob1_orbiter_hit_img, orbitmob1_orbiter_img] * 3
+
+blockmob_img = pygame.image.load(path.join(char_dir, "blockmob.png")).convert()
+blockmob_hit_img = pygame.image.load(path.join(char_dir, "blockmob_hit.png")).convert()
+blockmob_hit_anim = [blockmob_hit_img, blockmob_img] * 3
+
+ghostmob_img = pygame.image.load(path.join(char_dir, "ghostmob.png")).convert()
+ghostmob_hit_img = pygame.image.load(path.join(char_dir, "ghostmob_hit.png")).convert()
+ghostmob_hit_anim = [ghostmob_hit_img, ghostmob_img] * 3
+
+nodemob1_img = pygame.image.load(path.join(char_dir, "nodemob1.png")).convert()
+nodemob1_img.set_colorkey(WHITE1)
+nodemob1_hit_img = pygame.image.load(path.join(char_dir, "nodemob1_hit.png")).convert()
+nodemob1_hit_img.set_colorkey(WHITE1)
+nodemob1_hit_anim = [nodemob1_hit_img, nodemob1_img] * 3
+swellermob1_img = pygame.image.load(path.join(char_dir, "swellermob1.png")).convert()
+swellermob1_hit_img = pygame.image.load(path.join(char_dir, "swellermob1_hit.png")).convert()
+swellermob1_hit_anim = [swellermob1_hit_img, swellermob1_img] * 3
+
 boss_lv1_img = pygame.image.load(path.join(char_dir, "boss_lv1.png")).convert()
 boss_lv1_hit_img = pygame.image.load(path.join(char_dir, "boss_lv1_hit.png")).convert()
 boss_lv1_hit_anim = [boss_lv1_hit_img, boss_lv1_img] * 3
@@ -4380,6 +6251,15 @@ for i in range(12):
 boss_lv4child_img = pygame.image.load(path.join(char_dir, "boss_lv4child.png")).convert()
 boss_lv4child_hit_img = pygame.image.load(path.join(char_dir, "boss_lv4child_hit.png")).convert()
 boss_lv4child_hit_anim = [boss_lv4child_hit_img, boss_lv4child_img] * 3
+boss_lv5_phase1_img = pygame.image.load(path.join(char_dir, "boss_lv5_phase1.png")).convert()
+boss_lv5_phase1_hit_img = pygame.image.load(path.join(char_dir, "boss_lv5_phase1_hit.png")).convert()
+boss_lv5_phase1_hit_anim = [boss_lv5_phase1_hit_img, boss_lv5_phase1_img] * 3
+boss_lv5_phase2_img = pygame.image.load(path.join(char_dir, "boss_lv5_phase2.png")).convert()
+boss_lv5_phase2_hit_img = pygame.image.load(path.join(char_dir, "boss_lv5_phase2_hit.png")).convert()
+boss_lv5_phase2_hit_anim = [boss_lv5_phase2_hit_img, boss_lv5_phase2_img] * 3
+boss_lv5_orbiter_img = pygame.image.load(path.join(char_dir, "boss_lv5_orbiter.png")).convert()
+boss_lv5_orbiter_hit_img = pygame.image.load(path.join(char_dir, "boss_lv5_orbiter_hit.png")).convert()
+boss_lv5_orbiter_hit_anim = [boss_lv5_orbiter_hit_img, boss_lv5_orbiter_img] * 3
 
 cannonball1_img_0 = pygame.image.load(path.join(bullet_dir, "cannonball1_0.png")).convert()
 cannonball1_img_0.set_colorkey(WHITE1)
@@ -4391,6 +6271,11 @@ cannonball2_img_0.set_colorkey(WHITE1)
 cannonball2_img_1 = pygame.image.load(path.join(bullet_dir, "cannonball2_1.png")).convert()
 cannonball2_img_1.set_colorkey(WHITE1)
 cannonball2_anim = [cannonball2_img_0, cannonball2_img_1]
+cannonball3_img_0 = pygame.image.load(path.join(bullet_dir, "cannonball3_0.png")).convert()
+cannonball3_img_0.set_colorkey(WHITE1)
+cannonball3_img_1 = pygame.image.load(path.join(bullet_dir, "cannonball3_1.png")).convert()
+cannonball3_img_1.set_colorkey(WHITE1)
+cannonball3_anim = [cannonball3_img_0, cannonball3_img_1]
 
 spawneffect_anim = []
 for i in range(32):
@@ -4431,94 +6316,244 @@ for i in range(16):
 all_buttons = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 players = pygame.sprite.Group()
-player = Player()
 pointers = pygame.sprite.Group()
 target_pointer = TargetPointer()
 pointers.add(target_pointer)
-players.add(player)
 mobs = pygame.sprite.Group()
 all_mobs = pygame.sprite.Group()    # including shield units
 child_mobs = pygame.sprite.Group()  # for childmobs
-linemobs1 = pygame.sprite.Group()
-linemobs2 = pygame.sprite.Group()
-linemobs3 = pygame.sprite.Group()
-wallmobs1 = pygame.sprite.Group()
-wallmobs2 = pygame.sprite.Group()
-wallmobs3 = pygame.sprite.Group()
-followermobs1 = pygame.sprite.Group()
-followermobs2 = pygame.sprite.Group()
-minigunmobs1 = pygame.sprite.Group()
-minigunmobs2 = pygame.sprite.Group()
-minigunmobs3 = pygame.sprite.Group()
-shellmobs1 = pygame.sprite.Group()
-shellmobs2 = pygame.sprite.Group()
-barricademobs1 = pygame.sprite.Group()
 barricades = pygame.sprite.Group()
 player_bullets = pygame.sprite.Group()
 player_cannon_balls = pygame.sprite.Group()
 mob_bullets = pygame.sprite.Group()
 mob_cannon_balls = pygame.sprite.Group()
+mob_lasers = []
 spawns = pygame.sprite.Group()
 explosions = pygame.sprite.Group()
 debriz = pygame.sprite.Group()
 items = pygame.sprite.Group()
 
-# define level and phase
-stage = "test"
-stage_initial_set = stage
+# define score and playtime
+score = 0                           # overall score
+start_score = 0
+play_start_time = 0
+playtime = 0                        # overall gameplay time
+avg_score = 0                       # overall score earned per second
 
-phase_text = "LEVEL 1 / PHASE 1"
-phase_bound = [0, 200, 600, 1600]
-# phase_bound = [0, 6000, 12000, 18000]
-phase_num = 0
+level = 1
 
 max_mobs = 300  # max number of mobs on the field (except shield units)
-stage1_boss_spawned = False
-stage1_clear = False
-stage2_boss_spawned = False
-stage2_clear = False
-stage3_boss_spawned = False
-stage3_clear = False
-stage4_boss_spawned = False
-stage4_clear = False
 
 # variables for breaktime between two stages
 break_start = 0
 breaktime = 20
-now_break_1 = False
-now_break_2 = False
-now_break_3 = False
-now_break_4 = False
+now_break = False
 
+player = Player()
+players.add(player)
 all_sprites.add(player)
 all_sprites.add(target_pointer)
 
+# variables and functions for shifting entire field
+# shifts only vertically
+field_shift_pos = 0     # for vibrating or shaking entire field
+field_shift_magnitude = 1
+field_shift_length = 0
+field_vibrate_start = False
+field_vibrate_max_framenum = 0
+field_vibrate_framenum = 0
+field_vibrate = False
+field_shake_start = False
+field_shake_magnitude_attenuation_ratio = 1
+field_shake = False
 
-def add_single_mob(mobtype, mobgroup):
+
+# parameter "vibration_length" must be in secs
+def vibrate_field(magnitude, vibration_length):
+    global field_shift_pos, field_vibrate_start, field_vibrate_max_framenum, field_vibrate_framenum, field_vibrate
+
+    if field_vibrate_start:
+        field_vibrate = True
+        field_vibrate_start = False
+        field_shift_pos = magnitude
+        field_vibrate_max_framenum = round(vibration_length * fps)
+
+    field_shift_pos = -field_shift_pos
+    field_vibrate_framenum += 1
+    if field_vibrate_framenum >= field_vibrate_max_framenum:
+        field_vibrate_framenum = 0
+        field_shift_pos = 0
+        field_vibrate = False
+
+
+# parameter "shaking_length" must be in secs
+def shake_field(magnitude, shaking_length):
+    global field_shift_pos, field_shake_start, field_shake_magnitude_attenuation_ratio, field_shake
+
+    if field_shake_start:
+        field_shake = True
+        field_shake_start = False
+        field_shift_pos = magnitude
+
+        frames = round(shaking_length * fps)
+        field_shake_magnitude_attenuation_ratio = (1 / magnitude) ** (1 / frames)
+
+    field_shift_pos *= -field_shake_magnitude_attenuation_ratio
+    if abs(field_shift_pos) < 1:
+        field_shift_pos = 0
+        field_shake = False
+
+
+def add_single_mob(mobtype):
     """ function for adding new mob """
     all_sprites.add(mobtype)
     mobs.add(mobtype)
-    mobgroup.add(mobtype)
 
 
-score = 0
+def initialize_all_progress():
+    global score, playtime, avg_score, start_score, play_start_time, \
+        max_upgrade_count, max_hp_upgrade_count, max_mp_upgrade_count, \
+        pick_range_upgrade_count, main_weapon_upgrade_count, charging_cannon_power_upgrade_count
 
+    score = 0
+    start_score = score
+    play_start_time = time.time()
+    playtime = 0
+    avg_score = 0
+
+    max_hp_upgrade_count = 0
+    max_mp_upgrade_count = 0
+    pick_range_upgrade_count = 0
+    main_weapon_upgrade_count = 0
+    charging_cannon_power_upgrade_count = 0
+
+    player.hp_lvl = 1
+    player.mp_lvl = 1
+    player.pick_range_lvl = 1
+    player.main_weapon_lvl = 1
+    player.charging_cannon_lvl = 1
+
+    player.hp_full = player.hp_list[player.hp_lvl - 1]
+    player.mp_full = player.mp_list[player.mp_lvl - 1]
+    player.pick_range = player.pick_range_list[player.pick_range_lvl - 1]
+    player.max_cannon_power = player.charging_cannon_power_list[player.charging_cannon_lvl - 1]
+    player.cannon_charge_rate = player.max_cannon_power / 40
+    player.max_shock_range = 27 * math.sqrt(player.max_cannon_power)
+
+    for pl in players:
+        if pl != player:
+            pl.kill()
+    for mb in all_mobs:
+        mb.kill()
+    for sp in spawns:
+        sp.kill()
+    for child in child_mobs:
+        child.kill()
+    for ba in barricades:
+        ba.kill()
+    mob_lasers.clear()
+    for de in debriz:
+        de.kill()
+    for bu in player_bullets:
+        bu.kill()
+    for ca in player_cannon_balls:
+        ca.kill()
+    for bu in mob_bullets:
+        bu.kill()
+    for ca in mob_cannon_balls:
+        ca.kill()
+    for ex in explosions:
+        ex.kill()
+    for it in items:
+        it.kill()
+
+
+# for main menu screen
 mainmenu_show = True
+start_button = Button([450, 600, 300, 100], WHITE1, "START", 60)
+stage_select_menu_show = False
+
+# for play screen
 play = False
+
+# for paused window
 pause_ready = False
 pause = False
+paused_time = 0
+paused_length = 0
+total_paused_length = 0
 paused_window_show = False
-gameover_show = False
+quit_button = Button([screen_width - 450, screen_height // 2 - 35, 200, 70], WHITE1, "QUIT GAME", 20)
 
-start_button = Button([450, 600, 300, 100], WHITE1, "START", 60)
+# for upgrade window
+now_upgrading = False
+upgrade_window_show = False
+max_upgrade_count = 2
+
+max_hp_upgrade_button = Button([530, 230, 20, 20], WHITE1, "+", 15)
+max_hp_degrade_button = Button([550, 230, 20, 20], WHITE1, "-", 15, (0, 0, 0), False)
+max_hp_upgrade_count = 0
+
+max_mp_upgrade_button = Button([530, 280, 20, 20], WHITE1, "+", 15)
+max_mp_degrade_button = Button([550, 280, 20, 20], WHITE1, "-", 15, (0, 0, 0), False)
+max_mp_upgrade_count = 0
+
+pick_range_upgrade_button = Button([530, 330, 20, 20], WHITE1, "+", 15)
+pick_range_degrade_button = Button([550, 330, 20, 20], WHITE1, "-", 15, (0, 0, 0), False)
+pick_range_upgrade_count = 0
+
+main_weapon_upgrade_button = Button([1030, 230, 20, 20], WHITE1, "+", 15)
+main_weapon_degrade_button = Button([1050, 230, 20, 20], WHITE1, "-", 15, (0, 0, 0), False)
+main_weapon_upgrade_count = 0
+
+charging_cannon_power_upgrade_button = Button([1030, 280, 20, 20], WHITE1, "+", 15)
+charging_cannon_power_degrade_button = Button([1050, 280, 20, 20], WHITE1, "-", 15, (0, 0, 0), False)
+charging_cannon_power_upgrade_count = 0
+
+all_upgrade_buttons = [max_hp_upgrade_button, max_mp_upgrade_button, pick_range_upgrade_button, main_weapon_upgrade_button, charging_cannon_power_upgrade_button]
+all_degrade_buttons = [max_hp_degrade_button, max_mp_degrade_button, pick_range_degrade_button, main_weapon_degrade_button, charging_cannon_power_degrade_button]
+
+done_button = Button([880, 650, 220, 50], WHITE1, "APPLY & CONTINUE", 20)
+
+# for gameover screen
+gameover_show = False
 restart_button = Button([450, 600, 300, 100], WHITE1, "RESTART", 60)
+
+# define level and phases
+level1 = Level(1, [screen_width // 2 - 150, 200, 300, 70], BossLV1, Phase([MoveLineMob1, MoveLineMob3, MoveLineMob3], [150, 70, 30]))
+level2 = Level(2, [screen_width // 2 - 150, 280, 300, 70], BossLV2, Phase([WallMobUnit3], [500]))
+level3 = Level(3, [screen_width // 2 - 150, 360, 300, 70], BossLV3, Phase([MoveLineMob2, MinigunMob3], [200, 25]))
+level4 = Level(4, [screen_width // 2 - 150, 440, 300, 70], BossLV4, Phase([MinigunMob3, ShellMob1, ShellMob2], [8, 8, 8]))
+test_level = Level(5, [screen_width // 2 - 150, 520, 300, 70], BossLV5, Phase([OrbitMob1], [20]))
+
+all_levels = [level1, level2, level3, level4, test_level]
+current_level = all_levels[0]
+
+level1.add_phase([MoveLineMob1], [150], 200)
+level1.add_phase([MoveLineMob1, MoveLineMob2], [120, 55], 600)
+level1.add_phase([MoveLineMob1, MoveLineMob3, MoveLineMob3], [150, 70, 30], 1600)
+
+level2.add_phase([FollowerMob1, WallMobUnit1], [3, 600], 2000)
+level2.add_phase([FollowerMob1, WallMobUnit1, WallMobUnit2], [3, 400, 400], 5000)
+level2.add_phase([FollowerMob1, WallMobUnit1, WallMobUnit2, WallMobUnit3], [3, 300, 200, 100], 9000)
+
+level3.add_phase([MoveLineMob2, MinigunMob1], [60, 30], 4000)
+level3.add_phase([MoveLineMob1, MinigunMob1, MinigunMob2], [120, 30, 20], 10000)
+level3.add_phase([MoveLineMob1, MinigunMob1, MinigunMob2, MinigunMob3], [120, 25, 17, 13], 18000, True)
+
+level4.add_phase([MoveLineMob3, FollowerMob2], [77, 5], 10000, True)
+level4.add_phase([MoveLineMob2, FollowerMob2, MinigunMob1, ShellMob1], [70, 3, 30, 18], 20000, True)
+level4.add_phase([MinigunMob3, FollowerMob2, ShellMob1, ShellMob2], [12, 3, 20, 15], 35000, True)
+
+test_level.add_phase([OrbitMob1], [40], 1000000000000)
+
 stage_select_buttons = []
-for i in range(3):
-    stage_select_button = Button([150 + 300 * i, 400, 300, 70], WHITE1, "Start from LEVEL {}".format(i + 2), 20)
-    stage_select_buttons.append(stage_select_button)
-    all_buttons.add(stage_select_button)
+for i in range(5):
+    stage_select_buttons.append(all_levels[i].start_button)
+    all_buttons.add(all_levels[i].start_button)
 all_buttons.add(start_button)
 all_buttons.add(restart_button)
+all_buttons.add(quit_button)
 
 # MAIN GAME LOOP#
 
@@ -4543,339 +6578,98 @@ while not done:
         screen.fill(BLACK)
         draw_text(screen, "WAR OF SQUARES", 50, WHITE1, "midtop", screen_width // 2, 50)
         start_button.update()
+
+        # initialize player status according to selected level
+        if start_button.operate:
+            mainmenu_show = False
+            stage_select_menu_show = True
+            start_button.operate = False
+
+    elif stage_select_menu_show:
+        screen.fill(BLACK)
+        draw_text(screen, "SELECT LEVEL", 50, WHITE1, "midtop", screen_width // 2, 50)
         for button in stage_select_buttons:
             button.update()
 
         # initialize player status according to selected level
-        if start_button.operate or any([button.operate for button in stage_select_buttons]):
+        if any([button.operate for button in stage_select_buttons]):
             score = 0
-            if start_button.operate:
-                if stage == "test":
-                    phase_bound = [0, 10000, 20000, 35000]
-                    player.hp = 500
-                    player.hp_full = 500
-                    player.weapon_lvl = 4
-                else:
-                    stage = 1
-                    phase_bound = [0, 200, 600, 1600]
-                    player.hp = 100
-                    player.hp_full = 100
-                    player.weapon_lvl = 1
-                start_button.operate = False
-            elif stage_select_buttons[0].operate:
-                stage = 2
-                phase_bound = [0, 2000, 5000, 9000]
-                player.hp = 150
-                player.hp_full = 150
-                player.weapon_lvl = 2
+            if stage_select_buttons[0].operate:
+                level = 1
+                player.stat_points = 0
+                max_upgrade_count = 1
                 stage_select_buttons[0].operate = False
             elif stage_select_buttons[1].operate:
-                stage = 3
-                phase_bound = [0, 4000, 10000, 18000]
-                player.hp = 300
-                player.hp_full = 300
-                player.weapon_lvl = 3
+                level = 2
+                player.stat_points = 4
+                max_upgrade_count = 2
                 stage_select_buttons[1].operate = False
             elif stage_select_buttons[2].operate:
-                stage = 4
-                phase_bound = [0, 10000, 20000, 35000]
-                player.hp = 500
-                player.hp_full = 500
-                player.weapon_lvl = 4
+                level = 3
+                player.stat_points = 8
+                max_upgrade_count = 4
                 stage_select_buttons[2].operate = False
+            elif stage_select_buttons[3].operate:
+                level = 4
+                player.stat_points = 12
+                max_upgrade_count = 6
+                stage_select_buttons[3].operate = False
+            elif stage_select_buttons[4].operate:
+                level = 5
+                player.stat_points = 16
+                max_upgrade_count = 8
+                stage_select_buttons[4].operate = False
+
+            current_level = all_levels[level - 1]
+            current_level.initialize_level()
+            initialize_all_progress()
+            total_paused_length = 0
+            player.hp = 100
+            player.hp_full = 100
             player.mp = 100
             player.mp_full = 100
             player.rect.center = (screen_width // 2, screen_height // 2)
             screen_center = [0, 0]
-            mainmenu_show = False
+            stage_select_menu_show = False
             play = True
-            start_button.kill()
 
     elif play:
-        # LEVEL 1
-        if stage == 1:
-            if not stage1_clear:
-                if score < phase_bound[1]:
-                    phase_num = 0
-                    phase_text = "LEVEL 1 / PHASE 1"
-                    max_mobs = 150
-                    if len(mobs) < max_mobs:
-                        add_single_mob(MoveLineMob1(), linemobs1)
-                elif phase_bound[1] <= score < phase_bound[2]:
-                    phase_num = 1
-                    phase_text = "LEVEL 1 / PHASE 2"
-                    max_mobs = 175
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.7 and len(linemobs1) < 125:
-                            add_single_mob(MoveLineMob1(), linemobs1)
-                        elif len(linemobs2) < 55:
-                            add_single_mob(MoveLineMob2(), linemobs2)
-                elif phase_bound[2] <= score <= phase_bound[3]:
-                    phase_num = 2
-                    phase_text = "LEVEL 1 / PHASE 3"
-                    max_mobs = 250
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.6 and len(linemobs1) < 160:
-                            add_single_mob(MoveLineMob1(), linemobs1)
-                        elif random.random() <= 0.9 and len(linemobs2) < 80:
-                            add_single_mob(MoveLineMob2(), linemobs2)
-                        elif len(linemobs3) < 30:
-                            add_single_mob(MoveLineMob3(), linemobs3)
-                elif phase_bound[3] <= score:
-                    phase_num = "boss"
-                    phase_text = "LEVEL 1 / BOSS CHALLENGE"
-                    if not stage1_boss_spawned:
-                        boss = BossLV1()
-                        all_sprites.add(boss)
-                        mobs.add(boss)
-                        all_mobs.add(boss)
-                        stage1_boss_spawned = True
-                        pointer = BossPointer()
-                        all_sprites.add(pointer)
-                        players.add(pointer)
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.6 and len(linemobs1) < 160:
-                            add_single_mob(MoveLineMob1(), linemobs1)
-                        elif random.random() <= 0.9 and len(linemobs2) < 80:
-                            add_single_mob(MoveLineMob2(), linemobs2)
-                        elif len(linemobs3) < 30:
-                            add_single_mob(MoveLineMob3(), linemobs3)
+        """ update level and all sprites per frame when not paused """
+        if not pause and not now_upgrading:
+            paused_window_show = False
+            upgrade_window_show = False
 
-            elif now_break_1:
-                if time.time() - break_start >= breaktime:
-                    player.hp_full += 50
-                    player.hp = player.hp_full
-                    phase_bound = [0, 2000, 5000, 9000]
-                    for i in range(len(phase_bound)):
-                        phase_bound[i] += score
-                    stage += 1
-                    now_break_1 = False
+            """ field shift(vibration or shaking) control """
+            if (field_vibrate_start or field_vibrate) and not field_shake:
+                vibrate_field(field_shift_magnitude, field_shift_length)
 
-        # LEVEL 2
-        elif stage == 2:
-            if not stage2_clear:
-                if score < phase_bound[1]:
-                    phase_num = 0
-                    phase_text = "LEVEL 2 / PHASE 1"
-                    max_mobs = 600
-                    if len(mobs) < max_mobs:
-                        if len(followermobs1) <= 2:
-                            add_single_mob(FollowerMob1(), followermobs1)
-                        generate_wall((40, 1), (40, 40), 1, wallmobs1)
-                elif phase_bound[1] <= score < phase_bound[2]:
-                    phase_num = 1
-                    phase_text = "LEVEL 2 / PHASE 2"
-                    max_mobs = 800
-                    if len(mobs) < max_mobs:
-                        if len(followermobs1) <= 2:
-                            add_single_mob(FollowerMob1(), followermobs1)
-                        if random.random() < 0.5 and len(wallmobs1) <= 500:
-                            generate_wall((40, 1), (40, 40), 1, wallmobs1)
-                        elif len(wallmobs2) <= 500:
-                            generate_wall((40, 2), (40, 40), 2, wallmobs2)
-                elif phase_bound[2] <= score <= phase_bound[3]:
-                    phase_num = 2
-                    phase_text = "LEVEL 2 / PHASE 3"
-                    max_mobs = 1000
-                    if len(mobs) < max_mobs:
-                        if len(followermobs1) <= 2:
-                            add_single_mob(FollowerMob1(), followermobs1)
-                        if random.random() < 0.5 and len(wallmobs1) <= 300:
-                            generate_wall((40, 1), (40, 40), 1, wallmobs1)
-                        elif random.random() < 0.8 and len(wallmobs2) <= 200:
-                            generate_wall((40, 2), (40, 40), 2, wallmobs2)
-                        elif len(wallmobs3) <= 100:
-                            generate_wall((20, 3), (70, 70), 3, wallmobs3)
-                elif phase_bound[3] <= score:
-                    phase_num = "boss"
-                    phase_text = "LEVEL 2 / BOSS CHALLENGE"
-                    max_mobs = 500
-                    if not stage2_boss_spawned:
-                        boss = BossLV2()
-                        all_sprites.add(boss)
-                        mobs.add(boss)
-                        all_mobs.add(boss)
-                        stage2_boss_spawned = True
-                        pointer = BossPointer()
-                        all_sprites.add(pointer)
-                        players.add(pointer)
-                    if len(mobs) < max_mobs:
-                        if len(linemobs3) < max_mobs:
-                            generate_wall((20, 3), (70, 70), 3, wallmobs3)
+            if field_shake_start or field_shake:
+                shake_field(field_shift_magnitude, field_shift_length)
+                if field_vibrate:
+                    field_vibrate = False
 
-            elif now_break_2:
-                if time.time() - break_start >= breaktime:
-                    player.hp_full += 150
-                    player.hp = player.hp_full
-                    phase_bound = [0, 4000, 10000, 18000]
-                    for i in range(len(phase_bound)):
-                        phase_bound[i] += score
-                    stage += 1
-                    now_break_2 = False
+            """ update current level """
+            current_level.update()
+            if current_level.quit:
+                level += 1
+                player.stat_points += 4
+                current_level = all_levels[level - 1]
+                current_level.initialize_level()
 
-        # LEVEL 3
-        elif stage == 3:
-            if stage == 3 and not stage3_clear:
-                if score < phase_bound[1]:
-                    phase_num = 0
-                    phase_text = "LEVEL 3 / PHASE 1"
-                    max_mobs = 250
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.66 and len(linemobs2) < 60:
-                            add_single_mob(MoveLineMob2(), linemobs2)
-                        elif len(minigunmobs1) <= 30:
-                            add_single_mob(MinigunMob1(), minigunmobs1)
+            """ update all sprites """
+            all_sprites.update()
 
-                elif phase_bound[1] <= score < phase_bound[2]:
-                    phase_num = 1
-                    phase_text = "LEVEL 3 / PHASE 2"
-                    max_mobs = 400
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.8 and len(linemobs1) < 120:
-                            add_single_mob(MoveLineMob1(), linemobs1)
-                        elif len(minigunmobs1) <= 20:
-                            add_single_mob(MinigunMob1(), minigunmobs1)
-                        elif len(minigunmobs2) <= 15:
-                            add_single_mob(MinigunMob2(), minigunmobs2)
+            playtime = time.time() - play_start_time - total_paused_length
+            avg_score = score / playtime
 
-                elif phase_bound[2] <= score <= phase_bound[3]:
-                    phase_num = 2
-                    phase_text = "LEVEL 3 / PHASE 3"
-                    max_mobs = 450
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.7 and len(linemobs1) < 120:
-                            add_single_mob(MoveLineMob1(), linemobs1)
-                        elif random.random() <= 0.83 and len(minigunmobs1) <= 25:
-                            add_single_mob(MinigunMob1(), minigunmobs1)
-                        elif random.random() <= 0.93 and len(minigunmobs2) <= 17:
-                            add_single_mob(MinigunMob2(), minigunmobs2)
-                        elif len(minigunmobs3) <= 13:
-                            add_single_mob(MinigunMob3(), minigunmobs3)
-
-                elif phase_bound[3] <= score:
-                    phase_num = "boss"
-                    phase_text = "LEVEL 3 / BOSS CHALLENGE"
-                    max_mobs = 30
-                    if not stage3_boss_spawned:
-                        boss = BossLV3()
-                        all_sprites.add(boss)
-                        mobs.add(boss)
-                        all_mobs.add(boss)
-                        stage3_boss_spawned = True
-                        pointer = BossPointer()
-                        all_sprites.add(pointer)
-                        players.add(pointer)
-                        for mob in linemobs1:
-                            mob.dead = True
-                        for mob in linemobs2:
-                            mob.dead = True
-                        for mob in minigunmobs1:
-                            mob.dead = True
-                        for mob in minigunmobs2:
-                            mob.dead = True
-                    if len(minigunmobs3) <= max_mobs:
-                        add_single_mob(MinigunMob3(), minigunmobs3)
-                    if len(linemobs2) <= 200:
-                        add_single_mob(MoveLineMob2(), linemobs2)
-
-            elif now_break_3:
-                if time.time() - break_start >= breaktime:
-                    player.hp_full += 200
-                    player.hp = player.hp_full
-                    phase_bound = [0, 10000, 20000, 35000]
-                    for i in range(len(phase_bound)):
-                        phase_bound[i] += score
-                    stage += 1
-                    now_break_3 = False
-
-        # LEVEL 4 (incomplete)
-        elif stage == 4:
-            if stage == 4 and not stage4_clear:
-                if score < phase_bound[1]:
-                    phase_num = 0
-                    phase_text = "LEVEL 4 / PHASE 1"
-                    max_mobs = 80
-                    if len(mobs) < max_mobs:
-                        if len(linemobs3) <= 77:
-                            add_single_mob(MoveLineMob3(), linemobs3)
-                        elif len(followermobs2) <= 3:
-                            add_single_mob(FollowerMob2(), followermobs2)
-
-                elif phase_bound[1] <= score < phase_bound[2]:
-                    for mob in linemobs3:
-                        mob.dead = True
-                    phase_num = 1
-                    phase_text = "LEVEL 4 / PHASE 2"
-                    max_mobs = 100
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.7 and len(linemobs2) < 70:
-                            add_single_mob(MoveLineMob2(), linemobs2)
-                        elif random.random() <= 0.8 and len(followermobs2) < 4:
-                            add_single_mob(FollowerMob2(), followermobs2)
-                        elif random.random() <= 0.925 and len(minigunmobs1) < 30:
-                            add_single_mob(MinigunMob1(), minigunmobs1)
-                        elif len(shellmobs1) < 18:
-                            add_single_mob(ShellMob1(), shellmobs1)
-
-                elif phase_bound[2] <= score <= phase_bound[3]:
-                    for mob in linemobs2:
-                        mob.dead = True
-                    for mob in minigunmobs1:
-                        mob.dead = True
-                    phase_num = 2
-                    phase_text = "LEVEL 4 / PHASE 3"
-                    max_mobs = 60
-                    if len(mobs) < max_mobs:
-                        if random.random() <= 0.25 and len(minigunmobs3) < 15:
-                            add_single_mob(MinigunMob3(), minigunmobs3)
-                        elif random.random() <= 0.3 and len(followermobs2) < 4:
-                            add_single_mob(FollowerMob2(), followermobs2)
-                        elif random.random() <= 0.7 and len(shellmobs1) < 22:
-                            add_single_mob(ShellMob1(), shellmobs1)
-                        elif len(shellmobs2) < 15:
-                            add_single_mob(ShellMob2(), shellmobs2)
-
-                elif phase_bound[3] <= score:
-                    phase_num = "boss"
-                    phase_text = "LEVEL 4 / BOSS CHALLENGE"
-                    max_mobs = 30
-                    if not stage4_boss_spawned:
-                        boss = BossLV4()
-                        all_sprites.add(boss)
-                        mobs.add(boss)
-                        all_mobs.add(boss)
-                        stage4_boss_spawned = True
-                        pointer = BossPointer()
-                        all_sprites.add(pointer)
-                        players.add(pointer)
-                        for mob in linemobs3:
-                            mob.dead = True
-                        for mob in followermobs2:
-                            mob.dead = True
-                        for mob in shellmobs1:
-                            if random.random() < 0.5:
-                                mob.dead = True
-                        for mob in shellmobs2:
-                            if random.random() < 0.5:
-                                mob.dead = True
-                        for mob in minigunmobs3:
-                            if random.random() < 0.5:
-                                mob.dead = True
-                    if random.random() <= 0.33 and len(minigunmobs3) < 12:
-                        add_single_mob(MinigunMob3(), minigunmobs3)
-                    elif random.random() <= 0.66 and len(shellmobs1) < 12:
-                        add_single_mob(ShellMob1(), shellmobs1)
-                    elif len(shellmobs2) < 12:
-                        add_single_mob(ShellMob2(), shellmobs2)
-
-        # Stage for testing mobs (current: BarricadeMob)
-        elif stage == "test":
-            phase_text = "TEST"
-            phase_bound = [0, 10000000000000000000]
-            if len(barricademobs1) < 40:
-                add_single_mob(BarricadeMob1(), barricademobs1)
-            if len(linemobs2) < 150:
-                add_single_mob(MoveLineMob2(), linemobs2)
+            current_stage_score = score - start_score
+            current_stage_playtime = time.time() - current_level.start_time + .00000000001 - total_paused_length
+            current_stage_avg_score = current_stage_score / current_stage_playtime
+        elif pause:
+            paused_length = time.time() - paused_time
+            paused_window_show = True
+        elif now_upgrading:
+            upgrade_window_show = True
 
 
         """ dealing with all collision events """
@@ -4894,13 +6688,28 @@ while not done:
         for hit in hits:
             hit.hit = True
             for b in hits[hit]:
+                b.shock_range = player.max_shock_range * (b.power / b.max_power)
+
+                if b.power / b.max_power > 0.8:
+                    field_shift_magnitude = 10
+                    field_shift_length = 1
+                    field_shake_start = True
+
                 explosion_type = random.randrange(1, 12)
                 explosion = Explosion(b.rect.center, explosion_type, (round(b.size[0] * 4), round(b.size[1] * 4)))
                 all_sprites.add(explosion)
                 explosions.add(explosion)
+                for exps in range(random.randrange(4, 7)):
+                    exp_dist = random.uniform(60, b.shock_range * 0.8)
+                    exp_angle = random.uniform(-math.pi, math.pi)
+                    explosion_xpos = round(exp_dist * math.cos(exp_angle))
+                    explosion_ypos = round(exp_dist * math.sin(exp_angle))
+                    explosion_type = random.randrange(1, 12)
+                    explosion = Explosion([b.rect.centerx + explosion_xpos, b.rect.centery + explosion_ypos], explosion_type, (round(b.size[0] * 4), round(b.size[1] * 4)))
+                    all_sprites.add(explosion)
+                    explosions.add(explosion)
                 hit.hp -= b.power * random.uniform(0.8, 1.2)
                 if not b.released:
-                    b.shock_range = player.max_shock_range * (b.power / b.max_power)
                     player.last_cannon_shoot = time.time()
                     player.cannon_shoot = False
                 for mo in all_mobs:
@@ -5008,6 +6817,20 @@ while not done:
                 hit.no_points = True
                 player.hp -= hit.damage
 
+        # collision between player and lasers
+        curr_pos = player.rect.center
+        laser_hit = False
+        for la in mob_lasers:
+            if is_aligned(la.nodes[0].rect.center, curr_pos, la.nodes[1].rect.center, la.range):
+                player.hp -= la.power
+                laser_hit = True
+        if laser_hit:
+            player_x = player.rect.x
+            player_y = player.rect.y
+            hiteff = HitEffect((random.randrange(player_x, player_x + player.rect.width), random.randrange(player_y, player_y + player.rect.height)), (32, 32))
+            all_sprites.add(hiteff)
+            players.add(hiteff)
+
         # player dead and game over
         if player.hp <= 0:
             player.hp = 0
@@ -5021,21 +6844,17 @@ while not done:
 
 
         """ pause control """
-        p_pressed = pygame.key.get_pressed()[pygame.K_p]
-        if p_pressed:
-            pause_ready = True
-        if pause_ready:
-            if not p_pressed:
-                pause_ready = False
-                pause = not pause
-
-
-        """ update all sprites per frame when not paused """
-        if not pause:
-            paused_window_show = False
-            all_sprites.update()
-        else:
-            paused_window_show = True
+        if not now_upgrading:
+            p_pressed = pygame.key.get_pressed()[pygame.K_p]
+            if p_pressed:
+                pause_ready = True
+            if pause_ready:
+                if not p_pressed:
+                    paused_time = time.time()
+                    total_paused_length += paused_length
+                    paused_length = 0
+                    pause_ready = False
+                    pause = not pause
 
 
         """ draw all objects on screen """
@@ -5047,20 +6866,27 @@ while not done:
                              [i - screen_center[0], round((map_size / 2 + 0.5) * screen_height) - screen_center[1]], 2)
         for i in range(-round((map_size / 2 - 0.5) * screen_height), round((map_size / 2 + 0.5) * screen_height), 200):
             pygame.draw.line(screen, WHITE3,
-                             [-round((map_size / 2 - 0.5) * screen_width) - screen_center[0], i - screen_center[1]],
-                             [round((map_size / 2 + 0.5) * screen_width) - screen_center[0], i - screen_center[1]], 2)
+                             [-round((map_size / 2 - 0.5) * screen_width) - screen_center[0], i - screen_center[1] + round(field_shift_pos)],
+                             [round((map_size / 2 + 0.5) * screen_width) - screen_center[0], i - screen_center[1] + round(field_shift_pos)], 2)
 
         # draw all sprites
         debriz.draw(screen)
         items.draw(screen)
         spawns.draw(screen)
+
         barricades.draw(screen)
         all_mobs.draw(screen)
+
+        for lasers in mob_lasers:
+            lasers.draw()
         player_bullets.draw(screen)
         mob_bullets.draw(screen)
         mob_cannon_balls.draw(screen)
         players.draw(screen)
         player_cannon_balls.draw(screen)
+        for spr in all_mobs:
+            if spr.hp_bar_show:
+                draw_hp_bar(spr)
         explosions.draw(screen)
         pointers.draw(screen)
 
@@ -5068,6 +6894,8 @@ while not done:
         pygame.draw.rect(screen, BLACK, [20, 10, 200, 15], 0)
         pygame.draw.rect(screen, GREEN1, [20, 10, round(200 * (max(player.hp / player.hp_full, 0))), 15], 0)
         pygame.draw.rect(screen, WHITE1, [20, 10, 200, 15], 2)
+        draw_text(screen, "{} / {}".format(round(player.hp), player.hp_full), 15, WHITE1, "topleft", 230, 10)
+        draw_text(screen, "{} / {}".format(round(player.mp), player.mp_full), 15, WHITE1, "topleft", 230, 35)
 
         # draw player mp bar and skill cooltime bar right under of hp bar
         pygame.draw.rect(screen, BLACK, [20, 35, 200, 15], 0)
@@ -5082,27 +6910,26 @@ while not done:
         # before boss challenge: displays phase progress
         # during boss challenge: always full
         # after boss challenge: displays breaktime
-        if phase_num == "boss":
-            if now_break_1 or now_break_2 or now_break_3:
-                pygame.draw.rect(screen, YELLOW1, [screen_width // 2 - 100, 10, round(200 * (breaktime - time.time() + break_start) / breaktime), 15], 0)
-            else:
-                pygame.draw.rect(screen, YELLOW1, [screen_width // 2 - 100, 10, 200, 15], 0)
+        pygame.draw.rect(screen, BLACK, [screen_width // 2 - 100, 10, 200, 15], 0)
+        if current_level.boss_challenging:
+            pygame.draw.rect(screen, YELLOW1, [screen_width // 2 - 100, 10, 200, 15], 0)
+        elif current_level.clear:
+            pygame.draw.rect(screen, YELLOW1, [screen_width // 2 - 100, 10, round(200 * (breaktime - time.time() + current_level.break_start_time) / breaktime), 15], 0)
         else:
-            pygame.draw.rect(screen, BLACK, [screen_width // 2 - 100, 10, 200, 15], 0)
+            current_phase = current_level.phase_bound[current_level.phase_num]
+            next_phase = current_level.phase_bound[current_level.phase_num + 1]
             pygame.draw.rect(screen, YELLOW1, [screen_width // 2 - 100, 10, round(200 * (
-                        (min(score - phase_bound[phase_num], phase_bound[phase_num + 1] - phase_bound[phase_num])) / (
-                            phase_bound[phase_num + 1] - phase_bound[phase_num]))), 15], 0)
+                        (min(score - current_phase, next_phase - current_phase)) / (
+                            next_phase - current_phase))), 15], 0)
         pygame.draw.rect(screen, WHITE1, [screen_width // 2 - 100, 10, 200, 15], 2)
 
-        # draw boss's hp only during boss challenge
-        if stage1_boss_spawned or stage2_boss_spawned or stage3_boss_spawned or stage4_boss_spawned:
-            pygame.draw.rect(screen, BLACK, [screen_width - 220, 10, 200, 15], 0)
-            pygame.draw.rect(screen, RED1, [screen_width - 220, 10, round(200 * (boss.hp / boss.hp_full)), 15], 0)
-            pygame.draw.rect(screen, WHITE1, [screen_width - 220, 10, 200, 15], 2)
-
-        # draw score and phase text
-        draw_text(screen, phase_text, 20, WHITE1, "midtop", screen_width // 2, 30)
-        draw_text(screen, "SCORE : {}".format(round(score, 2)), 15, WHITE1, "topleft", 20, 65)
+        # draw score, playtime and phase text
+        draw_text(screen, current_level.phase_text, 20, WHITE1, "midtop", screen_width // 2, 30)
+        draw_text(screen, "TOTAL SCORE : {}".format(round(score, 2)), 15, WHITE1, "topleft", 20, 65)
+        draw_text(screen, "STAGE SCORE : {}".format(round(current_level.score, 2)), 15, WHITE1, "topleft", 20, 85)
+        draw_text(screen, "PLAYTIME : {} seconds".format(round(playtime, 2)), 15, WHITE1, "topleft", 900, 10)
+        draw_text(screen, "TOTAL T.A. SCORE : {}".format(round(avg_score, 4)), 15, WHITE1, "topleft", 900, 30)
+        draw_text(screen, "STAGE T.A. SCORE : {}".format(round(current_level.avg_score, 4)), 15, WHITE1, "topleft", 900, 50)
 
         # draw paused window when paused
         if paused_window_show:
@@ -5111,46 +6938,240 @@ while not done:
             draw_text(screen, "PAUSED", 50, WHITE1, "midtop", 600, 330)
             draw_text(screen, "Press 'P' to continue", 20, WHITE1, "midtop", 600, 430)
 
+            quit_button.update()
+            if quit_button.operate:
+                player.hp = 0
+                play = False
+                pause = False
+                gameover_show = True
+                paused_window_show = False
+                quit_button.operate = False
+
+        # draw upgrade window before starting a level
+        if upgrade_window_show:
+            current_level.playtime = 0
+            current_level.start_time = time.time()
+            current_level.mob_playtime = 0
+            current_level.mob_start_time = time.time()
+
+            pygame.draw.rect(screen, BLACK, [100, 100, 1000, 600], 0)
+            pygame.draw.rect(screen, WHITE1, [100, 100, 1000, 600], 4)
+            draw_text(screen, "UPGRADES", 50, WHITE1, "midtop", 600, 120)
+            draw_text(screen, "CURRENT LEVEL : {}".format(level), 20, WHITE1, "midtop", 600, 180)
+            draw_text(screen, "CURRENT STATS : {}".format(player.stat_points), 20, WHITE1, "topright", 1070, 180)
+
+            # max player HP upgrade text
+            draw_text(screen, "MAX HP", 20, WHITE1, "topleft", 130, 230)
+            draw_text(screen, "Current : {}".format(player.hp_lvl), 20, WHITE1, "topleft", 130, 250)
+
+            # max player MP upgrade text
+            draw_text(screen, "MAX MP", 20, WHITE1, "topleft", 130, 280)
+            draw_text(screen, "Current : {}".format(player.mp_lvl), 20, WHITE1, "topleft", 130, 300)
+
+            # Pickup Range upgrade text
+            draw_text(screen, "PICKUP RANGE", 20, WHITE1, "topleft", 130, 330)
+            draw_text(screen, "Current : {}".format(player.pick_range_lvl), 20, WHITE1, "topleft", 130, 350)
+
+            # Main Weapon Lv upgrade text
+            draw_text(screen, "MAIN WEAPON LEVEL", 20, WHITE1, "topleft", 630, 230)
+            draw_text(screen, "Current : {}".format(player.main_weapon_lvl), 20, WHITE1, "topleft", 630, 250)
+
+            # Charging Cannon Lv upgrade text
+            draw_text(screen, "CHARGING CANNON LEVEL", 20, WHITE1, "topleft", 630, 280)
+            draw_text(screen, "Current : {}".format(player.charging_cannon_lvl), 20, WHITE1, "topleft", 630, 300)
+
+            for button in all_upgrade_buttons:
+                button.update()
+            for button in all_degrade_buttons:
+                button.update()
+            done_button.update()
+
+            # upgrade max hp
+            if max_hp_upgrade_button.operate:
+                player.hp_lvl += 1
+                max_hp_upgrade_count += 1
+                player.stat_points -= 1
+                max_hp_upgrade_button.operate = False
+
+            if max_hp_degrade_button.operate:
+                player.hp_lvl -= 1
+                max_hp_upgrade_count -= 1
+                player.stat_points += 1
+                max_hp_degrade_button.operate = False
+
+            if max_hp_upgrade_count >= max_upgrade_count or player.stat_points <= 0:
+                max_hp_upgrade_button.deactivate()
+            else:
+                max_hp_upgrade_button.activate()
+
+            if max_hp_upgrade_count <= 0:
+                max_hp_degrade_button.deactivate()
+            else:
+                max_hp_degrade_button.activate()
+
+            # upgrade max mp
+            if max_mp_upgrade_button.operate:
+                player.mp_lvl += 1
+                max_mp_upgrade_count += 1
+                player.stat_points -= 1
+                max_mp_upgrade_button.operate = False
+
+            if max_mp_degrade_button.operate:
+                player.mp_lvl -= 1
+                max_mp_upgrade_count -= 1
+                player.stat_points += 1
+                max_mp_degrade_button.operate = False
+
+            if max_mp_upgrade_count >= max_upgrade_count or player.stat_points <= 0:
+                max_mp_upgrade_button.deactivate()
+            else:
+                max_mp_upgrade_button.activate()
+
+            if max_mp_upgrade_count <= 0:
+                max_mp_degrade_button.deactivate()
+            else:
+                max_mp_degrade_button.activate()
+
+            # upgrade pickup range
+            if pick_range_upgrade_button.operate:
+                player.pick_range_lvl += 1
+                pick_range_upgrade_count += 1
+                player.stat_points -= 1
+                pick_range_upgrade_button.operate = False
+
+            if pick_range_degrade_button.operate:
+                player.pick_range_lvl -= 1
+                pick_range_upgrade_count -= 1
+                player.stat_points += 1
+                pick_range_degrade_button.operate = False
+
+            if pick_range_upgrade_count >= max_upgrade_count or player.stat_points <= 0:
+                pick_range_upgrade_button.deactivate()
+            else:
+                pick_range_upgrade_button.activate()
+
+            if pick_range_upgrade_count <= 0:
+                pick_range_degrade_button.deactivate()
+            else:
+                pick_range_degrade_button.activate()
+
+            # upgrade main weapon
+            if main_weapon_upgrade_button.operate:
+                player.main_weapon_lvl += 1
+                main_weapon_upgrade_count += 1
+                player.stat_points -= 1
+                main_weapon_upgrade_button.operate = False
+
+            if main_weapon_degrade_button.operate:
+                player.main_weapon_lvl -= 1
+                main_weapon_upgrade_count -= 1
+                player.stat_points += 1
+                main_weapon_degrade_button.operate = False
+
+            if main_weapon_upgrade_count >= max_upgrade_count or player.stat_points <= 0:
+                main_weapon_upgrade_button.deactivate()
+            else:
+                main_weapon_upgrade_button.activate()
+
+            if main_weapon_upgrade_count <= 0:
+                main_weapon_degrade_button.deactivate()
+            else:
+                main_weapon_degrade_button.activate()
+
+            # upgrade charging cannon
+            if charging_cannon_power_upgrade_button.operate:
+                player.charging_cannon_lvl += 1
+                charging_cannon_power_upgrade_count += 1
+                player.stat_points -= 1
+                charging_cannon_power_upgrade_button.operate = False
+
+            if charging_cannon_power_degrade_button.operate:
+                player.charging_cannon_lvl -= 1
+                charging_cannon_power_upgrade_count -= 1
+                player.stat_points += 1
+                charging_cannon_power_degrade_button.operate = False
+
+            if charging_cannon_power_upgrade_count >= max_upgrade_count or player.stat_points <= 0:
+                charging_cannon_power_upgrade_button.deactivate()
+            else:
+                charging_cannon_power_upgrade_button.activate()
+
+            if charging_cannon_power_upgrade_count <= 0:
+                charging_cannon_power_degrade_button.deactivate()
+            else:
+                charging_cannon_power_degrade_button.activate()
+
+            if done_button.operate:
+                player.hp_full = player.hp_list[player.hp_lvl - 1]
+                player.mp_full = player.mp_list[player.mp_lvl - 1]
+                player.pick_range = player.pick_range_list[player.pick_range_lvl - 1]
+                player.max_cannon_power = player.charging_cannon_power_list[player.charging_cannon_lvl - 1]
+                player.cannon_charge_rate = player.max_cannon_power / 40
+                player.max_shock_range = 27 * math.sqrt(player.max_cannon_power)
+
+                max_upgrade_count = 2
+                max_hp_upgrade_count = 0
+                max_mp_upgrade_count = 0
+                pick_range_upgrade_count = 0
+                main_weapon_upgrade_count = 0
+                charging_cannon_power_upgrade_count = 0
+
+                upgrade_window_show = False
+                now_upgrading = False
+                done_button.operate = False
+
     # display gameover scene
     elif gameover_show:
         screen.fill(BLACK)
         draw_text(screen, "GAME OVER", 50, WHITE1, "midtop", screen_width // 2, 50)
+        draw_text(screen, "TOTAL RESULT", 25, WHITE1, "midtop", screen_width // 2, 150)
+
+        draw_text(screen, "TOTAL SCORE", 20, WHITE1, "topleft", 300, 200)
+        draw_text(screen, "TOTAL PLAYTIME", 20, WHITE1, "topleft", 300, 225)
+        draw_text(screen, "TIME-AVERAGE TOTAL SCORE", 20, WHITE1, "topleft", 300, 250)
+        draw_text(screen, "{} pts".format(round(score, 2)), 20, WHITE1, "topright", screen_width - 300, 200)
+        draw_text(screen, "{} sec".format(round(playtime, 2)), 20, WHITE1, "topright", screen_width - 300, 225)
+        draw_text(screen, "{} pts/sec".format(round(avg_score, 4)), 20, WHITE1, "topright", screen_width - 300, 250)
+
+        draw_text(screen, "RESULT FOR EACH LEVEL", 25, WHITE1, "midtop", screen_width // 2, 300)
+
+        draw_text(screen, "SCORE", 15, WHITE1, "topleft", 150, 380)
+        draw_text(screen, "PLAYTIME", 15, WHITE1, "topleft", 150, 405)
+        draw_text(screen, "TIME-AVERAGE SCORE", 15, WHITE1, "topleft", 150, 430)
+        draw_text(screen, "PHASE SCORE", 15, WHITE1, "topleft", 150, 460)
+        draw_text(screen, "PHASE PLAYTIME", 15, WHITE1, "topleft", 150, 485)
+        draw_text(screen, "TIME-AVERAGE PHASE SCORE", 15, WHITE1, "topleft", 150, 510)
+        draw_text(screen, "BOSS CHALLENGE PLAYTIME", 15, WHITE1, "topleft", 150, 540)
+
+        draw_text(screen, "LEVEL 1", 20, WHITE1, "topleft", 400, 340)
+        draw_text(screen, "LEVEL 2", 20, WHITE1, "topleft", 520, 340)
+        draw_text(screen, "LEVEL 3", 20, WHITE1, "topleft", 640, 340)
+        draw_text(screen, "LEVEL 4", 20, WHITE1, "topleft", 760, 340)
+        draw_text(screen, "LEVEL 5", 20, WHITE1, "topleft", 880, 340)
+
+        for lvl in range(5):
+            text_xpos = 500 + 120 * lvl
+            draw_text(screen, str(round(all_levels[lvl].score, 2)), 15, WHITE1, "topright", text_xpos, 380)
+            draw_text(screen, str(round(all_levels[lvl].playtime, 2)), 15, WHITE1, "topright", text_xpos, 405)
+            draw_text(screen, str(round(all_levels[lvl].avg_score, 4)), 15, WHITE1, "topright", text_xpos, 430)
+            draw_text(screen, str(round(all_levels[lvl].mob_score, 2)), 15, WHITE1, "topright", text_xpos, 460)
+            draw_text(screen, str(round(all_levels[lvl].mob_playtime, 2)), 15, WHITE1, "topright", text_xpos, 485)
+            draw_text(screen, str(round(all_levels[lvl].mob_avg_score, 4)), 15, WHITE1, "topright", text_xpos, 510)
+            draw_text(screen, str(round(all_levels[lvl].boss_playtime, 2)), 15, WHITE1, "topright", text_xpos, 540)
+
+        draw_text(screen, "pts", 15, WHITE1, "topright", screen_width - 150, 380)
+        draw_text(screen, "sec", 15, WHITE1, "topright", screen_width - 150, 405)
+        draw_text(screen, "pts/sec", 15, WHITE1, "topright", screen_width - 150, 430)
+        draw_text(screen, "pts", 15, WHITE1, "topright", screen_width - 150, 460)
+        draw_text(screen, "sec", 15, WHITE1, "topright", screen_width - 150, 485)
+        draw_text(screen, "pts/sec", 15, WHITE1, "topright", screen_width - 150, 510)
+        draw_text(screen, "sec", 15, WHITE1, "topright", screen_width - 150, 540)
+
         restart_button.update()
 
         # clear the entire map and initialize all progress
         if restart_button.operate:
-            for pl in players:
-                if pl != player:
-                    pl.kill()
-            for mo in all_mobs:
-                mo.kill()
-            for ch in child_mobs:
-                ch.kill()
-            for ba in barricades:
-                ba.kill()
-            for de in debriz:
-                de.kill()
-            for bu in player_bullets:
-                bu.kill()
-            for ca in player_cannon_balls:
-                ca.kill()
-            for bu in mob_bullets:
-                bu.kill()
-            for ca in mob_cannon_balls:
-                ca.kill()
-            for ex in explosions:
-                ex.kill()
-            for it in items:
-                it.kill()
-            stage1_boss_spawned = False
-            stage1_clear = False
-            stage2_boss_spawned = False
-            stage2_clear = False
-            stage3_boss_spawned = False
-            stage3_clear = False
-            stage4_boss_spawned = False
-            stage4_clear = False
-            stage = stage_initial_set
+            initialize_all_progress()
             gameover_show = False
             mainmenu_show = True
             restart_button.operate = False
