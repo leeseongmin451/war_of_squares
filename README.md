@@ -9,3 +9,4 @@
 2. Mouse: Aiming, bullets will be shot automatically
 3. Hold mouse button: Charging energy cannon
 4. Release mouse button: Shooting energy cannon
+5. Press "P" to pause the game
