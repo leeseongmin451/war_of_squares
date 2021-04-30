@@ -1,9 +1,8 @@
 """
 ----War of Squares----
-This game currently has 3 regular stages, and 1 test level.
-The regular stages are defined as number(1, 2, 3) in "level" variable.
-The test level is an incomplete level and defined as string "test" in
-"level" variable.
+This game currently has 4 regular levels, and 1 test level.
+The regular stages are defined as number(1, 2, 3, 4) in "level" variable.
+The test level is an incomplete level. (level 5).
 """
 
 import pygame
