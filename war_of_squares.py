@@ -4269,10 +4269,6 @@ class BossLV1(Mob):
             field_shift_length = 2
             field_shake_start = True
 
-            item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "upgrade weapon")
-            all_sprites.add(item)
-            items.add(item)
-
 
 class BossLV2(pygame.sprite.Sprite):
     """
@@ -4361,9 +4357,6 @@ class BossLV2(pygame.sprite.Sprite):
             field_shift_length = 2
             field_shake_start = True
 
-            item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "upgrade weapon")
-            all_sprites.add(item)
-            items.add(item)
             for e in range(random.randrange(5, 8)):
                 expl_type = random.randrange(1, 12)
                 expl = Explosion((random.randrange(self.rect.width) + self.rect.x, random.randrange(self.rect.height) + self.rect.y), expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
@@ -4562,10 +4555,6 @@ class BossLV3(pygame.sprite.Sprite):
             field_shift_length = 2
             field_shake_start = True
 
-            item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]],
-                        "upgrade weapon")
-            all_sprites.add(item)
-            items.add(item)
             for e in range(random.randrange(20, 25)):
                 expl_type = random.randrange(1, 12)
                 expl = Explosion((random.randrange(self.rect.width) + self.rect.x,
@@ -5018,10 +5007,6 @@ class BossLV4(pygame.sprite.Sprite):
                 field_shift_length = 2
                 field_shake_start = True
 
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]],
-                            "upgrade weapon")
-                all_sprites.add(item)
-                items.add(item)
                 for e in range(random.randrange(20, 25)):
                     expl_type = random.randrange(1, 12)
                     expl = Explosion((random.randrange(self.rect.width) + self.rect.x,
@@ -5519,9 +5504,6 @@ class BossLV5(pygame.sprite.Sprite):
             field_shift_length = 2
             field_shake_start = True
 
-            item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], "upgrade weapon")
-            all_sprites.add(item)
-            items.add(item)
             for e in range(random.randrange(5, 8)):
                 expl_type = random.randrange(1, 12)
                 expl = Explosion((random.randrange(self.rect.width) + self.rect.x, random.randrange(self.rect.height) + self.rect.y), expl_type, (round(self.size[0] * 1.5), round(self.size[1] * 1.5)))
