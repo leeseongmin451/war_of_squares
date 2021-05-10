@@ -1,0 +1,3 @@
+cd desktop\My stuff\Program\Python\war_of_squares
+
+pyinstaller war_of_squares.py --onefile --noconsole
