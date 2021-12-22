@@ -1,10 +1,3 @@
-"""
-----War of Squares----
-This game currently has 4 regular levels, and 1 test level.
-The regular stages are defined as number(1, 2, 3, 4) in "level" variable.
-The test level is an incomplete level. (level 5).
-"""
-
 import pygame
 import random
 import math
@@ -3002,7 +2995,7 @@ class BarricadeMob1(pygame.sprite.Sprite):
         self.damage = 372
         self.hit = False
         self.hitcount = 0
-        self.hp = 30
+        self.hp = 100
         self.hp_full = self.hp
         self.hp_bar_show = False
         self.hp_bar_show_start_time = 0
@@ -3323,7 +3316,7 @@ class Barricade(pygame.sprite.Sprite):
             self.image = pygame.transform.scale(barricade_vertical_img, self.size)
         self.rect = self.image.get_rect()
         self.damage = 118
-        self.hp = 100
+        self.hp = 150
         self.hp_full = self.hp
         self.dead = False
         self.death_count = 1
@@ -4323,7 +4316,7 @@ class GhostMob(pygame.sprite.Sprite):
             self.dead = True
         if not self.dead:
             if self.hit:
-                self.hp_bar_show = True
+                #self.hp_bar_show = True
                 self.hp_bar_show_start_time = time.time()
                 if self.hitcount >= len(self.hit_anim):
                     self.hitcount = 0
@@ -4451,7 +4444,7 @@ class NodeMob1(pygame.sprite.Sprite):
 
             for nodemob in self.group:
                 if nodemob not in self.nodemob_laser_pairs and nodemob != self and nodemob.spawned:
-                    if distance(self.rect.center, nodemob.rect.center) < 800:
+                    if distance(self.rect.center, nodemob.rect.center) < 600:
                         laser = Nodemob1Laser([self, nodemob])
                         all_sprites.add(laser)
                         mob_lasers.append(laser)
@@ -7143,8 +7136,9 @@ level2 = Level(2, [screen_width // 2 - 150, 280, 300, 70], BossLV2, Phase([WallM
 level3 = Level(3, [screen_width // 2 - 150, 360, 300, 70], BossLV3, Phase([MoveLineMob2, MinigunMob3], [200, 25]))
 level4 = Level(4, [screen_width // 2 - 150, 440, 300, 70], BossLV4, Phase([MinigunMob3, ShellMob1, ShellMob2], [8, 8, 8]))
 level5 = Level(5, [screen_width // 2 - 150, 520, 300, 70], BossLV5)
+test_level = Level(6, [screen_width // 2 - 150, 600, 300, 70], BossLV5)
 
-all_levels = [level1, level2, level3, level4, level5]
+all_levels = [level1, level2, level3, level4, level5, test_level]
 current_level = all_levels[0]
 
 level1.add_phase([MoveLineMob1], [150], 200)
@@ -7167,8 +7161,14 @@ level5.add_phase([OrbitMob1, MinigunMob2], [25, 40], 10000, True)
 level5.add_phase([OrbitMob1, OrbitMob2, MinigunMob1], [18, 13, 60], 25000, True)
 level5.add_phase([OrbitMob1, OrbitMob2, OrbitMob3, MinigunMob3], [15, 10, 3, 15], 40000, True)
 
+test_level.add_phase([BlockMob], [60], 5000, True)
+test_level.add_phase([GhostMob], [120], 10000, True)
+test_level.add_phase([NodeMob1], [40], 15000, True)
+test_level.add_phase([SwellerMob1], [45], 20000, True)
+test_level.add_phase([BarricadeMob1], [30], 1000000000, True)
+
 stage_select_buttons = []
-for i in range(5):
+for i in range(6):
     stage_select_buttons.append(all_levels[i].start_button)
     all_buttons.add(all_levels[i].start_button)
 all_buttons.add(start_button)
@@ -7240,6 +7240,11 @@ while not done:
                 player.stat_points = 4 * stat_points_per_level
                 max_upgrade_count = 4
                 stage_select_buttons[4].operate = False
+            elif stage_select_buttons[5].operate:
+                level = 6
+                player.stat_points = 5 * stat_points_per_level
+                max_upgrade_count = 5
+                stage_select_buttons[5].operate = False
 
             current_level = all_levels[level - 1]
             current_level.initialize_level()
