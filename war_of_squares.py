@@ -718,10 +718,9 @@ class BossPointer(pygame.sprite.Sprite):
         self.rect.center = old_center
 
 
-class Mob(pygame.sprite.Sprite):
+class MoveLineMob(pygame.sprite.Sprite):
     """
-    The parent sprite of all mobs
-    Has common attributes and methods
+    The parent sprite of all `MoveLineMob` type enemies
     """
     def __init__(self, size, debris_size, debris_speed, norm_image, hit_anim, speed, damage, hp, points):
         pygame.sprite.Sprite.__init__(self)
@@ -749,8 +748,14 @@ class Mob(pygame.sprite.Sprite):
         self.spawned = False
         self.spawn_effect = None
 
-    def set_pos_and_spawn(self, abs_pos):
-        self.abs_x, self.abs_y = abs_pos
+        self.angle = random.uniform(-math.pi, math.pi)
+        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
+                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
+        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
+                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
+        self.speedx = self.speed * math.cos(self.angle)
+        self.speedy = self.speed * math.sin(self.angle)
+
         self.rect.x = round(self.abs_x - screen_center[0])
         self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
@@ -758,7 +763,6 @@ class Mob(pygame.sprite.Sprite):
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
-
 
     def update(self):
         if not self.spawned:
@@ -786,6 +790,24 @@ class Mob(pygame.sprite.Sprite):
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
 
+        if not self.dead and self.spawned:
+            self.abs_x += self.speedx
+            self.abs_y += self.speedy
+            if not (-self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width and
+                    -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height):
+                if self.abs_x <= -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
+                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - 1
+                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width:
+                    self.abs_x = -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
+                elif self.abs_y <= -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
+                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - 1
+                else:
+                    self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
+                self.speedx = self.speed * math.cos(self.angle)
+                self.speedy = self.speed * math.sin(self.angle)
+            self.rect.x = round(self.abs_x - screen_center[0])
+            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
@@ -801,7 +823,7 @@ class Mob(pygame.sprite.Sprite):
             self.kill()
 
 
-class MoveLineMob1(Mob):
+class MoveLineMob1(MoveLineMob):
     """
     just moves through straight line with random direction and random speed
     does not attack player
@@ -809,79 +831,35 @@ class MoveLineMob1(Mob):
     group = pygame.sprite.Group()
 
     def __init__(self):
-        Mob.__init__(self, [30, 30], 16, random.randrange(10, 15), linemob1_img, linemob1_hit_anim, random.randrange(5, 10), 15, 1, 5)
-        self.angle = random.uniform(-math.pi, math.pi)
-        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.speedx = self.speed * math.cos(self.angle)
-        self.speedy = self.speed * math.sin(self.angle)
-
-        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
+        MoveLineMob.__init__(self, [30, 30], 16, random.randrange(10, 15), linemob1_img, linemob1_hit_anim, random.randrange(5, 10), 15, 1, 5)
 
         self.group.add(self)
 
-    def update(self):
-        Mob.update(self)
-        if not self.dead and self.spawned:
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            if not (-self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width and
-                    -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height):
-                if self.abs_x <= -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
-                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - 1
-                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width:
-                    self.abs_x = -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
-                elif self.abs_y <= -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
-                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - 1
-                else:
-                    self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
-                self.speedx = self.speed * math.cos(self.angle)
-                self.speedy = self.speed * math.sin(self.angle)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-
-class MoveLineMob2(Mob):
+class MoveLineMob2(MoveLineMob):
     """
-    similar to MoveLineMob1, but has bigger size and higher hp
+    just moves through straight line with random direction and random speed
+    does not attack player
     """
     group = pygame.sprite.Group()
 
     def __init__(self):
-        Mob.__init__(self, [40, 40], 20, random.randrange(12, 18), linemob2_img, linemob2_hit_anim, random.randrange(3, 8), 37, 5, 35)
-        self.angle = random.uniform(-math.pi, math.pi)
-        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.speedx = self.speed * math.cos(self.angle)
-        self.speedy = self.speed * math.sin(self.angle)
-
-        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
+        MoveLineMob.__init__(self, [40, 40], 20, random.randrange(12, 18), linemob2_img, linemob2_hit_anim, random.randrange(3, 8), 37, 5, 35)
 
         self.group.add(self)
 
-    def update(self):
-        Mob.update(self)
-        if not self.dead and self.spawned:
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            if not (-self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width and
-                    -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height):
-                if self.abs_x <= -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
-                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - 1
-                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width:
-                    self.abs_x = -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
-                elif self.abs_y <= -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
-                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - 1
-                else:
-                    self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
-                self.speedx = self.speed * math.cos(self.angle)
-                self.speedy = self.speed * math.sin(self.angle)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+
+class MoveLineMob3(MoveLineMob):
+    """
+    just moves through straight line with random direction and random speed
+    does not attack player
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        MoveLineMob.__init__(self, [80, 80], 26, random.randrange(14, 20), linemob3_img, linemob3_hit_anim, random.randrange(2, 5), 134, 20, 180)
+
+        self.group.add(self)
 
 
 class MoveLineMob2Armored(pygame.sprite.Sprite):
@@ -995,47 +973,6 @@ class MoveLineMob2Armored(pygame.sprite.Sprite):
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
             Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
             self.kill()
-
-
-class MoveLineMob3(Mob):
-    """
-    similar to MoveLineMob1, but has bigger size and higher hp
-    """
-    group = pygame.sprite.Group()
-
-    def __init__(self):
-        Mob.__init__(self, [80, 80], 26, random.randrange(14, 20), linemob3_img, linemob3_hit_anim, random.randrange(2, 5), 134, 20, 180)
-        self.angle = random.uniform(-math.pi, math.pi)
-        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.speedx = self.speed * math.cos(self.angle)
-        self.speedy = self.speed * math.sin(self.angle)
-
-        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
-
-        self.group.add(self)
-
-    def update(self):
-        Mob.update(self)
-        if not self.dead and self.spawned:
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            if not (-self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width and
-                    -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height):
-                if self.abs_x <= -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
-                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - 1
-                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width:
-                    self.abs_x = -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
-                elif self.abs_y <= -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
-                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - 1
-                else:
-                    self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
-                self.speedx = self.speed * math.cos(self.angle)
-                self.speedy = self.speed * math.sin(self.angle)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
 
 class MoveLineMob3Armored(pygame.sprite.Sprite):
@@ -4783,13 +4720,13 @@ class MineBomb(pygame.sprite.Sprite):
             self.kill()
 
 
-class BossLV1(Mob):
+class BossLV1(MoveLineMob):
     """
     level 1 boss
     similar to MoveLineMobs, but has very large size, very low speed, very high hp
     """
     def __init__(self):
-        Mob.__init__(self, [200, 200], 40, 25, boss_lv1_img, boss_lv1_hit_anim, 2, 5000, 300, 5000)
+        MoveLineMob.__init__(self, [200, 200], 40, 25, boss_lv1_img, boss_lv1_hit_anim, 2, 5000, 300, 5000)
         self.type = random.randrange(1, 5)
         if self.type == 1:
             self.abs_x = random.randrange(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + self.rect.width,
@@ -4814,12 +4751,12 @@ class BossLV1(Mob):
         self.speedx = self.speed * math.cos(self.angle)
         self.speedy = self.speed * math.sin(self.angle)
 
-        Mob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
+        MoveLineMob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
 
         self.in_map = False
 
     def update(self):
-        Mob.update(self)
+        MoveLineMob.update(self)
         if not self.dead and self.spawned:
             if -(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width \
                     and -(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height:
