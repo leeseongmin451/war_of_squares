@@ -4889,9 +4889,9 @@ class BossLV2(pygame.sprite.Sprite):
         self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.shield_group = pygame.sprite.Group()
-        generate_shield((self.rect.x, self.rect.y), self.size, 5, (30, 30), (10, 10), 8, random.randrange(6, 13), shieldunit1_img, shieldunit1_hit_anim, 6, 2, 2, self.shield_group)
-        generate_shield((self.rect.x, self.rect.y), self.size, 1, (8, 8), (50, 50), 20, random.randrange(10, 18), shieldunit2_img, shieldunit2_hit_anim, 110, 25, 20, self.shield_group)
-        generate_shield((self.rect.x, self.rect.y), self.size, 3, (26, 26), (20, 20), 14, random.randrange(8, 16), shieldunit3_img, shieldunit3_hit_anim, 25, 10, 10, self.shield_group)
+        self.generate_shield(5, (30, 30), (10, 10), 8, random.randrange(6, 13), shieldunit1_img, shieldunit1_hit_anim, 6, 2, 2)
+        self.generate_shield(1, (8, 8), (50, 50), 20, random.randrange(10, 18), shieldunit2_img, shieldunit2_hit_anim, 110, 25, 20)
+        self.generate_shield(3, (26, 26), (20, 20), 14, random.randrange(8, 16), shieldunit3_img, shieldunit3_hit_anim, 25, 10, 10)
 
     def update(self):
         global score
@@ -4935,6 +4935,35 @@ class BossLV2(pygame.sprite.Sprite):
                 s.dead = True
             self.shield_group.update((self.rect.x, self.rect.y))
             self.kill()
+
+    def generate_shield(self, layer, shield_size, unit_size, debris_size, debris_speed, image, hit_anim, damage, hp, points):
+        shield_width = shield_size[0] * unit_size[0]
+        shield_height = shield_size[1] * unit_size[1]
+        pos = ((self.size[0] - shield_width) // 2, (self.size[1] - shield_height) // 2)
+        for q in range(shield_size[1]):
+            if q in range(layer, shield_size[1] - layer):
+                for p in range(layer):
+                    shield_unit = FollowerMobShieldUnit((self.rect.x, self.rect.y),
+                                                        (pos[0] + p * unit_size[0], pos[1] + q * unit_size[1]),
+                                                        unit_size, debris_size, debris_speed, image, hit_anim, damage,
+                                                        hp, points)
+                    self.shield_group.add(shield_unit)
+                    all_mobs.add(shield_unit)
+                for p in range(shield_size[0] - layer, shield_size[0]):
+                    shield_unit = FollowerMobShieldUnit((self.rect.x, self.rect.y),
+                                                        (pos[0] + p * unit_size[0], pos[1] + q * unit_size[1]),
+                                                        unit_size, debris_size, debris_speed, image, hit_anim, damage,
+                                                        hp, points)
+                    self.shield_group.add(shield_unit)
+                    all_mobs.add(shield_unit)
+            else:
+                for p in range(shield_size[0]):
+                    shield_unit = FollowerMobShieldUnit((self.rect.x, self.rect.y),
+                                                        (pos[0] + p * unit_size[0], pos[1] + q * unit_size[1]),
+                                                        unit_size, debris_size, debris_speed, image, hit_anim, damage,
+                                                        hp, points)
+                    self.shield_group.add(shield_unit)
+                    all_mobs.add(shield_unit)
 
 
 class BossLV3(pygame.sprite.Sprite):
@@ -6283,27 +6312,6 @@ class FollowerMobShieldUnit(pygame.sprite.Sprite):
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
             Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
             self.kill()
-
-
-def generate_shield(master_pos, master_size, layer, shield_size, unit_size, debris_size, debris_speed, image, hit_anim, damage, hp, points, shield_group):
-    shield_width = shield_size[0] * unit_size[0]
-    shield_height = shield_size[1] * unit_size[1]
-    pos = ((master_size[0] - shield_width) // 2, (master_size[1] - shield_height) // 2)
-    for q in range(shield_size[1]):
-        if q in range(layer, shield_size[1] - layer):
-            for p in range(layer):
-                shield_unit = FollowerMobShieldUnit(master_pos, (pos[0] + p * unit_size[0], pos[1] + q * unit_size[1]), unit_size, debris_size, debris_speed, image, hit_anim, damage, hp, points)
-                shield_group.add(shield_unit)
-                all_mobs.add(shield_unit)
-            for p in range(shield_size[0] - layer, shield_size[0]):
-                shield_unit = FollowerMobShieldUnit(master_pos, (pos[0] + p * unit_size[0], pos[1] + q * unit_size[1]), unit_size, debris_size, debris_speed, image, hit_anim, damage, hp, points)
-                shield_group.add(shield_unit)
-                all_mobs.add(shield_unit)
-        else:
-            for p in range(shield_size[0]):
-                shield_unit = FollowerMobShieldUnit(master_pos, (pos[0] + p * unit_size[0], pos[1] + q * unit_size[1]), unit_size, debris_size, debris_speed, image, hit_anim, damage, hp, points)
-                shield_group.add(shield_unit)
-                all_mobs.add(shield_unit)
 
 
 class SpawnEffect(pygame.sprite.Sprite):
