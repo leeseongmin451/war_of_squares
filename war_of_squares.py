@@ -862,36 +862,37 @@ class MoveLineMob3(MoveLineMob):
         self.group.add(self)
 
 
-class WallMobUnit1(pygame.sprite.Sprite):
+class WallMobUnit(pygame.sprite.Sprite):
     """
+    The parent sprite of all `WallMobUnit` type enemies
+
     the single unit of wall
     make up a large wall with themselves and move up, down, left or right
     wall-generating function is defined separately
     """
-    group = pygame.sprite.Group()
 
-    def __init__(self, movetype, pos, speed):
+    def __init__(self, unitsize, debris_size, debris_speed, norm_image, hit_anim, movetype, pos, speed, damage, hp, points):
         pygame.sprite.Sprite.__init__(self)
-        self.unitsize = [40, 40]
-        self.debris_size = 18
-        self.debris_speed = random.randrange(10, 15)
-        self.norm_image = wallmob1_img
+        self.unitsize = unitsize
+        self.debris_size = debris_size
+        self.debris_speed = debris_speed
+        self.norm_image = norm_image
         self.image = pygame.transform.scale(self.norm_image, self.unitsize)
-        self.hit_anim = wallmob1_hit_anim
+        self.hit_anim = hit_anim
         self.rect = self.image.get_rect()
         self.pos = pos
         self.abs_x = self.pos[0]
         self.abs_y = self.pos[1]
         self.speed = speed
-        self.damage = 13
+        self.damage = damage
         self.hit = False
         self.hitcount = 0
-        self.hp = 2
+        self.hp = hp
         self.hp_full = self.hp
         self.hp_bar_show = False
         self.hp_bar_show_start_time = 0
         self.dead = False
-        self.points = 10
+        self.points = points
         self.no_points = False
         self.movetype = movetype
         if self.movetype == 1:
@@ -909,8 +910,6 @@ class WallMobUnit1(pygame.sprite.Sprite):
         self.rect.x = round(self.abs_x - screen_center[0])
         self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-        self.group.add(self)
-
     def update(self):
         global score
         if self.hp <= 0:
@@ -927,10 +926,14 @@ class WallMobUnit1(pygame.sprite.Sprite):
                     self.hitcount += 1
             self.abs_x += self.speedx
             self.abs_y += self.speedy
-            if (self.movetype == 1 and self.abs_y > (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + self.rect.height)\
-                    or (self.movetype == 2 and self.abs_y < -self.rect.height * 2 - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height)\
-                    or (self.movetype == 3 and self.abs_x > (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + self.rect.width)\
-                    or (self.movetype == 4 and self.abs_x < -self.rect.width * 2 - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width):
+            if (self.movetype == 1 and self.abs_y > (
+                    SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + self.rect.height) \
+                    or (self.movetype == 2 and self.abs_y < -self.rect.height * 2 - (
+                    SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height) \
+                    or (self.movetype == 3 and self.abs_x > (
+                    SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + self.rect.width) \
+                    or (self.movetype == 4 and self.abs_x < -self.rect.width * 2 - (
+                    SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width):
                 self.kill()
             self.rect.x = round(self.abs_x - screen_center[0])
             self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
@@ -941,11 +944,13 @@ class WallMobUnit1(pygame.sprite.Sprite):
         else:
             if not self.no_points:
                 avg_debris_cnt = round((self.unitsize[0] + self.unitsize[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
+                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt,
+                      self.debris_speed)
             self.rect.x = round(self.abs_x - screen_center[0])
             self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
             if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
+                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]],
+                            get_item_type())
                 all_sprites.add(item)
                 items.add(item)
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
@@ -953,182 +958,40 @@ class WallMobUnit1(pygame.sprite.Sprite):
             self.kill()
 
 
-class WallMobUnit2(pygame.sprite.Sprite):
+class WallMobUnit1(WallMobUnit):
     """
-    similar to WallMobUnit1, but has bigger size or higher hp
+    A child class of `WallMobUnit`
     """
     group = pygame.sprite.Group()
 
     def __init__(self, movetype, pos, speed):
-        pygame.sprite.Sprite.__init__(self)
-        self.unitsize = [40, 40]
-        self.debris_size = 20
-        self.debris_speed = random.randrange(10, 15)
-        self.norm_image = wallmob2_img
-        self.image = pygame.transform.scale(self.norm_image, self.unitsize)
-        self.hit_anim = wallmob2_hit_anim
-        self.rect = self.image.get_rect()
-        self.pos = pos
-        self.abs_x = self.pos[0]
-        self.abs_y = self.pos[1]
-        self.speed = speed
-        self.damage = 27
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 3
-        self.hp_full = self.hp
-        self.hp_bar_show = False
-        self.hp_bar_show_start_time = 0
-        self.dead = False
-        self.points = 17
-        self.no_points = False
-        self.movetype = movetype
-        if self.movetype == 1:
-            self.speedx = 0
-            self.speedy = self.speed
-        elif self.movetype == 2:
-            self.speedx = 0
-            self.speedy = -self.speed
-        elif self.movetype == 3:
-            self.speedx = self.speed
-            self.speedy = 0
-        else:
-            self.speedx = -self.speed
-            self.speedy = 0
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+        WallMobUnit.__init__(self, [40, 40], 18, random.randrange(10, 15), wallmob1_img, wallmob1_hit_anim, movetype, pos, speed, 13, 2, 10)
 
         self.group.add(self)
 
-    def update(self):
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                self.hp_bar_show = True
-                self.hp_bar_show_start_time = time.time()
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.unitsize)
-                    self.hitcount += 1
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            if (self.movetype == 1 and self.abs_y > (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + self.rect.height)\
-                    or (self.movetype == 2 and self.abs_y < -self.rect.height * 2 - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height)\
-                    or (self.movetype == 3 and self.abs_x > (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + self.rect.width)\
-                    or (self.movetype == 4 and self.abs_x < -self.rect.width * 2 - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width):
-                self.kill()
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-            if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
-                self.hp_bar_show = False
-
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.unitsize[0] + self.unitsize[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
-            Explosion(self.rect.center, expl_type, (round(self.unitsize[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.unitsize[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            self.kill()
-
-
-class WallMobUnit3(pygame.sprite.Sprite):
+class WallMobUnit2(WallMobUnit):
     """
-    similar to WallMobUnit1, but has bigger size or higher hp
+    A child class of `WallMobUnit`
     """
     group = pygame.sprite.Group()
 
     def __init__(self, movetype, pos, speed):
-        pygame.sprite.Sprite.__init__(self)
-        self.unitsize = [70, 70]
-        self.debris_size = 24
-        self.debris_speed = random.randrange(14, 20)
-        self.norm_image = wallmob3_img
-        self.image = pygame.transform.scale(self.norm_image, self.unitsize)
-        self.hit_anim = wallmob3_hit_anim
-        self.rect = self.image.get_rect()
-        self.pos = pos
-        self.abs_x = self.pos[0]
-        self.abs_y = self.pos[1]
-        self.speed = speed
-        self.damage = 57
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 8
-        self.hp_full = self.hp
-        self.hp_bar_show = False
-        self.hp_bar_show_start_time = 0
-        self.dead = False
-        self.points = 50
-        self.no_points = False
-        self.movetype = movetype
-        if self.movetype == 1:
-            self.speedx = 0
-            self.speedy = self.speed
-        elif self.movetype == 2:
-            self.speedx = 0
-            self.speedy = -self.speed
-        elif self.movetype == 3:
-            self.speedx = self.speed
-            self.speedy = 0
-        else:
-            self.speedx = -self.speed
-            self.speedy = 0
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+        WallMobUnit.__init__(self, [40, 40], 20, random.randrange(10, 15), wallmob2_img, wallmob2_hit_anim, movetype, pos, speed, 27, 3, 17)
 
         self.group.add(self)
 
-    def update(self):
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                self.hp_bar_show = True
-                self.hp_bar_show_start_time = time.time()
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.unitsize)
-                    self.hitcount += 1
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            if (self.movetype == 1 and self.abs_y > (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + self.rect.height)\
-                    or (self.movetype == 2 and self.abs_y < -self.rect.height * 2 - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height)\
-                    or (self.movetype == 3 and self.abs_x > (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + self.rect.width)\
-                    or (self.movetype == 4 and self.abs_x < -self.rect.width * 2 - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width):
-                self.kill()
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-            if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
-                self.hp_bar_show = False
+class WallMobUnit3(WallMobUnit):
+    """
+    A child class of `WallMobUnit`
+    """
+    group = pygame.sprite.Group()
 
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.unitsize[0] + self.unitsize[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
-            Explosion(self.rect.center, expl_type, (round(self.unitsize[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.unitsize[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            self.kill()
+    def __init__(self, movetype, pos, speed):
+        WallMobUnit.__init__(self, [70, 70], 24, random.randrange(14, 20), wallmob3_img, wallmob3_hit_anim, movetype, pos, speed, 57, 8, 50)
+
+        self.group.add(self)
 
 
 def generate_wall(max_size, unitsize, mobtype, wallmobs):
