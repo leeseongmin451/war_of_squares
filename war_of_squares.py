@@ -2769,13 +2769,6 @@ class OrbitMob1(pygame.sprite.Sprite):
                 self.rect.x = round(self.abs_x - screen_center[0])
                 self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-                while self.number_of_orbiters < self.max_number_of_orbiters:
-                    self.orbiter = Orbiter1(self.rect.center)
-                    self.orbiters.add(self.orbiter)
-                    all_mobs.add(self.orbiter)
-                    self.number_of_orbiters += 1
-            return
-
         global score
         if self.hp <= 0:
             self.dead = True
@@ -2812,17 +2805,8 @@ class OrbitMob1(pygame.sprite.Sprite):
             self.rect.x = round(self.abs_x - screen_center[0])
             self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-            self.number_of_orbiters = len(self.orbiters)
-            if time.time() - self.last_orbiter_generated_time >= self.orbiter_generating_time_interval and\
-                    self.number_of_orbiters < self.max_number_of_orbiters:
-                self.orbiter = Orbiter1(self.rect.center)
-                self.orbiters.add(self.orbiter)
-                all_mobs.add(self.orbiter)
-                self.number_of_orbiters += 1
-                self.last_orbiter_generated_time = time.time()
-
-            for orbiter in self.orbiters:
-                orbiter.update(self.rect.center)
+            self.update_orbit()
+            self.attack()
 
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
@@ -2843,6 +2827,19 @@ class OrbitMob1(pygame.sprite.Sprite):
                 orbiter.dead = True
                 orbiter.update(self.rect.center)
             self.kill()
+
+    def update_orbit(self):
+        self.number_of_orbiters = len(self.orbiters)
+        if time.time() - self.last_orbiter_generated_time >= self.orbiter_generating_time_interval and \
+                self.number_of_orbiters < self.max_number_of_orbiters:
+            self.orbiter = Orbiter1(self.rect.center)
+            self.orbiters.add(self.orbiter)
+            all_mobs.add(self.orbiter)
+            self.number_of_orbiters += 1
+            self.last_orbiter_generated_time = time.time()
+
+        for orbiter in self.orbiters:
+            orbiter.update(self.rect.center)
 
     def attack(self):
         if time.time() - self.last_attacked >= self.attack_interval:
@@ -3016,12 +3013,6 @@ class OrbitMob2(pygame.sprite.Sprite):
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
                 self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-
-                while self.number_of_orbiters < self.max_number_of_orbiters:
-                    self.orbiter = Orbiter2(self.rect.center)
-                    self.orbiters.add(self.orbiter)
-                    all_mobs.add(self.orbiter)
-                    self.number_of_orbiters += 1
             return
 
         global score
@@ -3060,17 +3051,8 @@ class OrbitMob2(pygame.sprite.Sprite):
             self.rect.x = round(self.abs_x - screen_center[0])
             self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-            self.number_of_orbiters = len(self.orbiters)
-            if time.time() - self.last_orbiter_generated_time >= self.orbiter_generating_time_interval and\
-                    self.number_of_orbiters < self.max_number_of_orbiters:
-                self.orbiter = Orbiter2(self.rect.center)
-                self.orbiters.add(self.orbiter)
-                all_mobs.add(self.orbiter)
-                self.number_of_orbiters += 1
-                self.last_orbiter_generated_time = time.time()
-
-            for orbiter in self.orbiters:
-                orbiter.update(self.rect.center)
+            self.update_orbit()
+            self.attack()
 
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
@@ -3091,6 +3073,19 @@ class OrbitMob2(pygame.sprite.Sprite):
                 orbiter.dead = True
                 orbiter.update(self.rect.center)
             self.kill()
+
+    def update_orbit(self):
+        self.number_of_orbiters = len(self.orbiters)
+        if time.time() - self.last_orbiter_generated_time >= self.orbiter_generating_time_interval and \
+                self.number_of_orbiters < self.max_number_of_orbiters:
+            self.orbiter = Orbiter2(self.rect.center)
+            self.orbiters.add(self.orbiter)
+            all_mobs.add(self.orbiter)
+            self.number_of_orbiters += 1
+            self.last_orbiter_generated_time = time.time()
+
+        for orbiter in self.orbiters:
+            orbiter.update(self.rect.center)
 
     def attack(self):
         if time.time() - self.last_attacked >= self.attack_interval:
@@ -3271,20 +3266,6 @@ class OrbitMob3(pygame.sprite.Sprite):
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
                 self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-
-                for num in range(30):
-                    self.orbiter = Orbiter3(self.rect.center, 250, 0.01, num * 2 * math.pi / 30, 3, self.opposite)
-                    self.orbit1_orbiters.add(self.orbiter)
-                    self.orbiters.add(self.orbiter)
-                    all_mobs.add(self.orbiter)
-                    self.opposite = not self.opposite
-
-                for num in range(20):
-                    self.orbiter = Orbiter3(self.rect.center, 180, 0.02, num * 2 * math.pi / 20, 3, self.opposite)
-                    self.orbit2_orbiters.add(self.orbiter)
-                    self.orbiters.add(self.orbiter)
-                    all_mobs.add(self.orbiter)
-                    self.opposite = not self.opposite
             return
 
         global score
@@ -3323,26 +3304,8 @@ class OrbitMob3(pygame.sprite.Sprite):
             self.rect.x = round(self.abs_x - screen_center[0])
             self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-            # generate outer orbit
-            if len(self.orbit1_orbiters) <= 15:
-                for num in range(30):
-                    self.orbiter = Orbiter3(self.rect.center, 250, 0.01, num * 2 * math.pi / 30, 3, self.opposite)
-                    self.orbit1_orbiters.add(self.orbiter)
-                    self.orbiters.add(self.orbiter)
-                    all_mobs.add(self.orbiter)
-                    self.opposite = not self.opposite
-
-            # generate inner orbit
-            if len(self.orbit2_orbiters) <= 10:
-                for num in range(20):
-                    self.orbiter = Orbiter3(self.rect.center, 180, 0.02, num * 2 * math.pi / 20, 3, self.opposite)
-                    self.orbit2_orbiters.add(self.orbiter)
-                    self.orbiters.add(self.orbiter)
-                    all_mobs.add(self.orbiter)
-                    self.opposite = not self.opposite
-
-            for orbiter in self.orbiters:
-                orbiter.update(self.rect.center)
+            self.update_orbit()
+            self.attack()
 
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
@@ -3363,6 +3326,28 @@ class OrbitMob3(pygame.sprite.Sprite):
                 orbiter.dead = True
                 orbiter.update(self.rect.center)
             self.kill()
+
+    def update_orbit(self):
+        # generate outer orbit
+        if len(self.orbit1_orbiters) <= 15:
+            for num in range(30):
+                self.orbiter = Orbiter3(self.rect.center, 250, 0.01, num * 2 * math.pi / 30, 3, self.opposite)
+                self.orbit1_orbiters.add(self.orbiter)
+                self.orbiters.add(self.orbiter)
+                all_mobs.add(self.orbiter)
+                self.opposite = not self.opposite
+
+        # generate inner orbit
+        if len(self.orbit2_orbiters) <= 10:
+            for num in range(20):
+                self.orbiter = Orbiter3(self.rect.center, 180, 0.02, num * 2 * math.pi / 20, 3, self.opposite)
+                self.orbit2_orbiters.add(self.orbiter)
+                self.orbiters.add(self.orbiter)
+                all_mobs.add(self.orbiter)
+                self.opposite = not self.opposite
+
+        for orbiter in self.orbiters:
+            orbiter.update(self.rect.center)
 
     def attack(self):
         pass
