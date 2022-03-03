@@ -2704,44 +2704,45 @@ class Barricade(pygame.sprite.Sprite):
             self.kill()
 
 
-class OrbitMob1(pygame.sprite.Sprite):
+class OrbitMob(pygame.sprite.Sprite):
     """
+    A parent class of all `OrbitMob` type of enemies
+
     orbitmob - mothership(or core)
     protects itself with "orbiters" orbiting itself.
     if orbiters are destroyed, the mother ship relaunches new orbiter to its orbit.
-    orbiters attack player with cannonballs, and mothership just moves around.
+    orbiters attack player, and mothership just moves around.
     """
-    group = pygame.sprite.Group()
 
-    def __init__(self):
+    def __init__(self, size, debris_size, debris_speed, norm_image, hit_anim, speed, damage, hp, points, orbiter_generating_time_interval, max_number_of_orbiters, attack_interval):
         pygame.sprite.Sprite.__init__(self)
-        self.size = [150, 150]
-        self.debris_size = 25
-        self.debris_speed = random.randrange(15, 24)
-        self.norm_image = orbitmob1_mothership_img
+        self.size = size
+        self.debris_size = debris_size
+        self.debris_speed = debris_speed
+        self.norm_image = norm_image
         self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = orbitmob1_mothership_hit_anim
+        self.hit_anim = hit_anim
         self.rect = self.image.get_rect()
-        self.speed = random.randrange(2, 5)
-        self.damage = 638
+        self.speed = speed
+        self.damage = damage
         self.hit = False
         self.hitcount = 0
-        self.hp = 180
+        self.hp = hp
         self.hp_full = self.hp
         self.hp_bar_show = False
         self.hp_bar_show_start_time = 0
         self.dead = False
-        self.points = 785
+        self.points = points
         self.no_points = False
 
-        self.orbiter_generating_time_interval = 1
+        self.orbiter_generating_time_interval = orbiter_generating_time_interval
         self.last_orbiter_generated_time = time.time()
         self.orbiter = None
         self.orbiters = pygame.sprite.Group()
-        self.max_number_of_orbiters = 10
+        self.max_number_of_orbiters = max_number_of_orbiters
         self.number_of_orbiters = 0
 
-        self.attack_interval = random.uniform(5, 10)
+        self.attack_interval = attack_interval
         self.last_attacked = time.time()
 
         self.angle = random.uniform(-math.pi, math.pi)
@@ -2758,8 +2759,6 @@ class OrbitMob1(pygame.sprite.Sprite):
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
 
-        self.group.add(self)
-
     def update(self):
         if not self.spawned:
             if self.spawn_effect.complete:
@@ -2768,7 +2767,7 @@ class OrbitMob1(pygame.sprite.Sprite):
                 all_mobs.add(self)
                 self.rect.x = round(self.abs_x - screen_center[0])
                 self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-
+            return
         global score
         if self.hp <= 0:
             self.dead = True
@@ -2827,6 +2826,32 @@ class OrbitMob1(pygame.sprite.Sprite):
                 orbiter.dead = True
                 orbiter.update(self.rect.center)
             self.kill()
+
+    def update_orbit(self):
+        """
+        This will be overrided by its child classes.
+        :return: None
+        """
+        pass
+
+    def attack(self):
+        """
+        This will be overrided by its child classes.
+        :return: None
+        """
+        pass
+
+
+class OrbitMob1(OrbitMob):
+    """
+    A child class which inherits OrbitMob class as parent.
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        OrbitMob.__init__(self, [150, 150], 20, random.randrange(15, 24), orbitmob1_mothership_img, orbitmob1_mothership_hit_anim, random.randrange(2, 5), 638, 180, 785, 1, 10, random.uniform(5, 10))
+
+        self.group.add(self)
 
     def update_orbit(self):
         self.number_of_orbiters = len(self.orbiters)
@@ -2950,7 +2975,7 @@ class Orbiter1(pygame.sprite.Sprite):
         mob_cannon_balls.add(cannonball)
 
 
-class OrbitMob2(pygame.sprite.Sprite):
+class OrbitMob2(OrbitMob):
     """
     similar to OrbitMob1
     but generates more orbiters that are smaller, faster than that of OrbiterMob1
@@ -2959,120 +2984,9 @@ class OrbitMob2(pygame.sprite.Sprite):
     group = pygame.sprite.Group()
 
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.size = [120, 120]
-        self.debris_size = 20
-        self.debris_speed = random.randrange(15, 24)
-        self.norm_image = orbitmob2_mothership_img
-        self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = orbitmob2_mothership_hit_anim
-        self.rect = self.image.get_rect()
-        self.speed = random.randrange(4, 8)
-        self.damage = 478
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 140
-        self.hp_full = self.hp
-        self.hp_bar_show = False
-        self.hp_bar_show_start_time = 0
-        self.dead = False
-        self.points = 655
-        self.no_points = False
-
-        self.orbiter_generating_time_interval = .15
-        self.last_orbiter_generated_time = time.time()
-        self.orbiter = None
-        self.orbiters = pygame.sprite.Group()
-        self.max_number_of_orbiters = 30
-        self.number_of_orbiters = 0
-
-        self.attack_interval = random.uniform(5, 10)
-        self.last_attacked = time.time()
-
-        self.angle = random.uniform(-math.pi, math.pi)
-        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.speedx = self.speed * math.cos(self.angle)
-        self.speedy = self.speed * math.sin(self.angle)
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-        self.spawned = False
-        self.spawn_effect = SpawnEffect(self.rect.center, [self.size[0], self.size[1]])
-        all_sprites.add(self.spawn_effect)
-        spawns.add(self.spawn_effect)
+        OrbitMob.__init__(self, [120, 120], 20, random.randrange(15, 24), orbitmob2_mothership_img, orbitmob2_mothership_hit_anim, random.randrange(4, 8), 478, 140, 655, .15, 30, random.uniform(5, 10))
 
         self.group.add(self)
-
-    def update(self):
-        if not self.spawned:
-            if self.spawn_effect.complete:
-                self.spawned = True
-                self.spawn_effect.kill()
-                all_mobs.add(self)
-                self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            return
-
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                self.hp_bar_show = True
-                self.hp_bar_show_start_time = time.time()
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
-                    self.hitcount += 1
-
-            if not (-3 * self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (
-                    SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + 2 * self.rect.width and
-                    -3 * self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (
-                            SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + 2 * self.rect.height):
-                if self.abs_x <= -3 * self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
-                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + self.rect.width
-                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + 2 * self.rect.width:
-                    self.abs_x = -2 * self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
-                elif self.abs_y <= -3 * self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
-                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + self.rect.height
-                else:
-                    self.abs_y = -2 * self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height
-
-            if random.random() <= 0.02:
-                self.angle = random.uniform(self.angle - math.pi / 2, self.angle + math.pi / 2)
-                self.speedx = self.speed * math.cos(self.angle)
-                self.speedy = self.speed * math.sin(self.angle)
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-
-            self.update_orbit()
-            self.attack()
-
-            if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
-                self.hp_bar_show = False
-
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
-            Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            for orbiter in self.orbiters:
-                orbiter.dead = True
-                orbiter.update(self.rect.center)
-            self.kill()
 
     def update_orbit(self):
         self.number_of_orbiters = len(self.orbiters)
@@ -3201,7 +3115,7 @@ class Orbiter2(pygame.sprite.Sprite):
         mob_bullets.add(bullet)
 
 
-class OrbitMob3(pygame.sprite.Sprite):
+class OrbitMob3(OrbitMob):
     """
     similar to OrbitMob1
     has two-layered orbits
@@ -3209,123 +3123,13 @@ class OrbitMob3(pygame.sprite.Sprite):
     group = pygame.sprite.Group()
 
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.size = [250, 250]
-        self.debris_size = 35
-        self.debris_speed = random.randrange(19, 28)
-        self.norm_image = orbitmob3_mothership_img
-        self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = orbitmob3_mothership_hit_anim
-        self.rect = self.image.get_rect()
-        self.speed = random.randrange(1, 4)
-        self.damage = 1254
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 360
-        self.hp_full = self.hp
-        self.hp_bar_show = False
-        self.hp_bar_show_start_time = 0
-        self.dead = False
-        self.points = 1548
-        self.no_points = False
+        OrbitMob.__init__(self, [250, 250], 35, random.randrange(19, 28), orbitmob3_mothership_img, orbitmob3_mothership_hit_anim, random.randrange(1, 4), 1254, 360, 1548, .15, 30, random.uniform(5, 10))
 
-        self.orbiter_generating_time_interval = .15
-        self.last_orbiter_generated_time = time.time()
-        self.orbiter = None
         self.opposite = True
         self.orbit1_orbiters = pygame.sprite.Group()            # outer orbit
         self.orbit2_orbiters = pygame.sprite.Group()            # inner orbit
-        self.orbiters = pygame.sprite.Group()                   # All orbiters
-        self.max_number_of_orbiters = 30
-        self.number_of_orbiters = 0
-
-        self.attack_interval = random.uniform(5, 10)
-        self.last_attacked = time.time()
-
-        self.angle = random.uniform(-math.pi, math.pi)
-        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.speedx = self.speed * math.cos(self.angle)
-        self.speedy = self.speed * math.sin(self.angle)
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-        self.spawned = False
-        self.spawn_effect = SpawnEffect(self.rect.center, [self.size[0], self.size[1]])
-        all_sprites.add(self.spawn_effect)
-        spawns.add(self.spawn_effect)
 
         self.group.add(self)
-
-    def update(self):
-        if not self.spawned:
-            if self.spawn_effect.complete:
-                self.spawned = True
-                self.spawn_effect.kill()
-                all_mobs.add(self)
-                self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            return
-
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                self.hp_bar_show = True
-                self.hp_bar_show_start_time = time.time()
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
-                    self.hitcount += 1
-
-            if not (-3 * self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (
-                    SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + 2 * self.rect.width and
-                    -3 * self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (
-                            SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + 2 * self.rect.height):
-                if self.abs_x <= -3 * self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
-                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + self.rect.width
-                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width + 2 * self.rect.width:
-                    self.abs_x = -2 * self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
-                elif self.abs_y <= -3 * self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
-                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height + self.rect.height
-                else:
-                    self.abs_y = -2 * self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height
-
-            if random.random() <= 0.02:
-                self.angle = random.uniform(self.angle - math.pi / 2, self.angle + math.pi / 2)
-                self.speedx = self.speed * math.cos(self.angle)
-                self.speedy = self.speed * math.sin(self.angle)
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-
-            self.update_orbit()
-            self.attack()
-
-            if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
-                self.hp_bar_show = False
-
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
-            Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            for orbiter in self.orbiters:
-                orbiter.dead = True
-                orbiter.update(self.rect.center)
-            self.kill()
 
     def update_orbit(self):
         # generate outer orbit
