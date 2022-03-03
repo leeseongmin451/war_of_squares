@@ -1310,39 +1310,40 @@ class FollowerMob2Child(pygame.sprite.Sprite):
             self.kill()
 
 
-class MinigunMob1(pygame.sprite.Sprite):
+class MinigunMob(pygame.sprite.Sprite):
     """
+    The parent sprite of all `MinigunMob` type enemies
+
     shoots a bullet to player periodically
     moves up, down, left, or right,
     but the direction can be changed with a specific probability in every frame
     the "movetype" attribute defines only initial move direction of the mob
     """
-    group = pygame.sprite.Group()
 
-    def __init__(self):
+    def __init__(self, size, debris_size, debris_speed, norm_image, hit_anim, speed, damage, hp, points, shoot_interval, power):
         pygame.sprite.Sprite.__init__(self)
-        self.size = (70, 70)
-        self.debris_size = 28
-        self.debris_speed = random.randrange(13, 19)
-        self.norm_image = minigunmob1_img
+        self.size = size
+        self.debris_size = debris_size
+        self.debris_speed = debris_speed
+        self.norm_image = norm_image
         self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = minigunmob1_hit_anim
+        self.hit_anim = hit_anim
         self.rect = self.image.get_rect()
-        self.speed = random.randrange(2, 7)
-        self.damage = 143
+        self.speed = speed
+        self.damage = damage
         self.hit = False
         self.hitcount = 0
-        self.hp = 40
+        self.hp = hp
         self.hp_full = self.hp
         self.hp_bar_show = False
         self.hp_bar_show_start_time = 0
         self.dead = False
-        self.points = 384
+        self.points = points
         self.no_points = False
-        self.shoot_interval = 4
+        self.shoot_interval = shoot_interval
         self.last_shoot = time.time()
         self.trigger = False
-        self.power = 8
+        self.power = power
         self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
                                       (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
         self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
@@ -1366,8 +1367,6 @@ class MinigunMob1(pygame.sprite.Sprite):
         self.spawn_effect = SpawnEffect(self.rect.center, self.size)
         all_sprites.add(self.spawn_effect)
         spawns.add(self.spawn_effect)
-
-        self.group.add(self)
 
     def update(self):
         if not self.spawned:
@@ -1464,6 +1463,28 @@ class MinigunMob1(pygame.sprite.Sprite):
             self.kill()
 
     def use_minigun(self):
+        """
+        This method will be overrided by its child classes
+        :return: None
+        """
+        pass
+
+
+class MinigunMob1(MinigunMob):
+    """
+    shoots a bullet to player periodically
+    moves up, down, left, or right,
+    but the direction can be changed with a specific probability in every frame
+    the "movetype" attribute defines only initial move direction of the mob
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        MinigunMob.__init__(self, (70, 70), 28, random.randrange(13, 19), minigunmob1_img, minigunmob1_hit_anim, random.randrange(2, 7), 143, 40, 384, 4, 8)
+
+        self.group.add(self)
+
+    def use_minigun(self):
         if time.time() - self.last_shoot > self.shoot_interval and not self.trigger:
             self.trigger = True
         if self.trigger:
@@ -1478,7 +1499,7 @@ class MinigunMob1(pygame.sprite.Sprite):
                 self.last_shoot = time.time()
 
 
-class MinigunMob2(pygame.sprite.Sprite):
+class MinigunMob2(MinigunMob):
     """
     similar to MinigunMob1, but has larger size, slower speed and higher hp
     spreads multiple bullets at a time
@@ -1486,154 +1507,16 @@ class MinigunMob2(pygame.sprite.Sprite):
     group = pygame.sprite.Group()
 
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.size = (100, 100)
-        self.debris_size = 28
-        self.debris_speed = random.randrange(15, 23)
-        self.norm_image = minigunmob2_img
-        self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = minigunmob2_hit_anim
-        self.rect = self.image.get_rect()
-        self.speed = random.randrange(2, 5)
-        self.damage = 201
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 65
-        self.hp_full = self.hp
-        self.hp_bar_show = False
-        self.hp_bar_show_start_time = 0
-        self.dead = False
-        self.points = 497
-        self.no_points = False
+        MinigunMob.__init__(self, (100, 100), 28, random.randrange(15, 23), minigunmob2_img, minigunmob2_hit_anim, random.randrange(2, 5), 201, 65, 497, 6, 8)
+
         self.bullets_per_shoot = 7
         self.current_bullets = self.bullets_per_shoot
-        self.shoot_interval = 6
         self.first_shoot = random.uniform(0, self.shoot_interval)
         self.interval = self.first_shoot
-        self.last_shoot = time.time()
-        self.trigger = False
-        self.power = 8
         self.shoot_dir = 0
         self.shoot_angle = 0
-        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.movetype = random.randrange(1, 5)
-        if self.movetype == 1:
-            self.speedx = 0
-            self.speedy = self.speed
-        elif self.movetype == 2:
-            self.speedx = 0
-            self.speedy = -self.speed
-        elif self.movetype == 3:
-            self.speedx = self.speed
-            self.speedy = 0
-        else:
-            self.speedx = -self.speed
-            self.speedy = 0
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-        self.spawned = False
-        self.spawn_effect = SpawnEffect(self.rect.center, self.size)
-        all_sprites.add(self.spawn_effect)
-        spawns.add(self.spawn_effect)
 
         self.group.add(self)
-
-    def update(self):
-        if not self.spawned:
-            if self.spawn_effect.complete:
-                self.spawned = True
-                self.spawn_effect.kill()
-                all_mobs.add(self)
-                self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            return
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                self.hp_bar_show = True
-                self.hp_bar_show_start_time = time.time()
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
-                    self.hitcount += 1
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= 0.01:
-                turn = random.choice(["l", "r"])
-                if self.movetype == 1:
-                    if turn == "l":
-                        self.movetype = 3
-                        self.speedx = self.speed
-                        self.speedy = 0
-                    else:
-                        self.movetype = 4
-                        self.speedx = -self.speed
-                        self.speedy = 0
-                elif self.movetype == 2:
-                    if turn == "l":
-                        self.movetype = 4
-                        self.speedx = -self.speed
-                        self.speedy = 0
-                    else:
-                        self.movetype = 3
-                        self.speedx = self.speed
-                        self.speedy = 0
-                elif self.movetype == 3:
-                    if turn == "l":
-                        self.movetype = 2
-                        self.speedx = 0
-                        self.speedy = -self.speed
-                    else:
-                        self.movetype = 1
-                        self.speedx = 0
-                        self.speedy = self.speed
-                else:
-                    if turn == "l":
-                        self.movetype = 1
-                        self.speedx = 0
-                        self.speedy = self.speed
-                    else:
-                        self.movetype = 2
-                        self.speedx = 0
-                        self.speedy = -self.speed
-            if not (-self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width and
-                    -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height):
-                if self.abs_x <= -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
-                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - 1
-                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width:
-                    self.abs_x = -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
-                elif self.abs_y <= -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
-                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - 1
-                else:
-                    self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
-
-            self.use_minigun()
-
-            if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
-                self.hp_bar_show = False
-
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
-            Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            self.kill()
 
     def use_minigun(self):
         dist_x = player.rect.center[0] - self.rect.center[0]
@@ -1657,7 +1540,7 @@ class MinigunMob2(pygame.sprite.Sprite):
                 self.last_shoot = time.time()
 
 
-class MinigunMob3(pygame.sprite.Sprite):
+class MinigunMob3(MinigunMob):
     """
     similar to MinigunMob1, but has larger size, slower speed and higher hp
     shoots a chain of bullets to multiple directions like a short laser blast
@@ -1665,153 +1548,15 @@ class MinigunMob3(pygame.sprite.Sprite):
     group = pygame.sprite.Group()
 
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.size = (150, 150)
-        self.debris_size = 33
-        self.debris_speed = random.randrange(17, 24)
-        self.norm_image = minigunmob3_img
-        self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = minigunmob3_hit_anim
-        self.rect = self.image.get_rect()
-        self.speed = random.randrange(1, 3)
-        self.damage = 457
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 100
-        self.hp_full = self.hp
-        self.hp_bar_show = False
-        self.hp_bar_show_start_time = 0
-        self.dead = False
-        self.points = 795
-        self.no_points = False
-        self.shoot_interval = 7
+        MinigunMob.__init__(self, (150, 150), 33, random.randrange(17, 24), minigunmob3_img, minigunmob3_hit_anim, random.randrange(1, 3), 457, 100, 795, 7, 8)
+
         self.first_shoot = random.uniform(0, self.shoot_interval)
         self.interval = self.first_shoot
-        self.last_shoot = time.time()
-        self.trigger = False
-        self.power = 8
         self.shoot_angle = 0
         self.bullets_per_shoot = 10
         self.current_bullets = 0
-        self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-        self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                      (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.movetype = random.randrange(1, 5)
-        if self.movetype == 1:
-            self.speedx = 0
-            self.speedy = self.speed
-        elif self.movetype == 2:
-            self.speedx = 0
-            self.speedy = -self.speed
-        elif self.movetype == 3:
-            self.speedx = self.speed
-            self.speedy = 0
-        else:
-            self.speedx = -self.speed
-            self.speedy = 0
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-        self.spawned = False
-        self.spawn_effect = SpawnEffect(self.rect.center, self.size)
-        all_sprites.add(self.spawn_effect)
-        spawns.add(self.spawn_effect)
 
         self.group.add(self)
-
-    def update(self):
-        if not self.spawned:
-            if self.spawn_effect.complete:
-                self.spawned = True
-                self.spawn_effect.kill()
-                all_mobs.add(self)
-                self.rect.x = round(self.abs_x - screen_center[0])
-                self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            return
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                self.hp_bar_show = True
-                self.hp_bar_show_start_time = time.time()
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
-                    self.hitcount += 1
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= 0.01:
-                turn = random.choice(["l", "r"])
-                if self.movetype == 1:
-                    if turn == "l":
-                        self.movetype = 3
-                        self.speedx = self.speed
-                        self.speedy = 0
-                    else:
-                        self.movetype = 4
-                        self.speedx = -self.speed
-                        self.speedy = 0
-                elif self.movetype == 2:
-                    if turn == "l":
-                        self.movetype = 4
-                        self.speedx = -self.speed
-                        self.speedy = 0
-                    else:
-                        self.movetype = 3
-                        self.speedx = self.speed
-                        self.speedy = 0
-                elif self.movetype == 3:
-                    if turn == "l":
-                        self.movetype = 2
-                        self.speedx = 0
-                        self.speedy = -self.speed
-                    else:
-                        self.movetype = 1
-                        self.speedx = 0
-                        self.speedy = self.speed
-                else:
-                    if turn == "l":
-                        self.movetype = 1
-                        self.speedx = 0
-                        self.speedy = self.speed
-                    else:
-                        self.movetype = 2
-                        self.speedx = 0
-                        self.speedy = -self.speed
-            if not (-self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width < self.abs_x < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width and
-                    -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height < self.abs_y < (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height):
-                if self.abs_x <= -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width:
-                    self.abs_x = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - 1
-                elif self.abs_x >= (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width:
-                    self.abs_x = -self.rect.width - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width + 1
-                elif self.abs_y <= -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height:
-                    self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - 1
-                else:
-                    self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
-
-            self.use_minigun()
-
-            if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
-                self.hp_bar_show = False
-
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-            if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
-            Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            self.kill()
 
     def use_minigun(self):
         if time.time() - self.last_shoot > self.interval and not self.trigger:
