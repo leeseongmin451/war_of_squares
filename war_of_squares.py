@@ -1091,31 +1091,32 @@ def generate_wall(max_size, unitsize, mobtype, wallmobs):
                     wallmobs.add(firstunit)
 
 
-class FollowerMob1(pygame.sprite.Sprite):
+class FollowerMob(pygame.sprite.Sprite):
     """
+    The parent sprite of all `FollowerMob` type enemies
+
     moves toward player with random speed
     """
-    group = pygame.sprite.Group()
 
-    def __init__(self):
+    def __init__(self, size, debris_size, debris_speed, norm_image, hit_anim, speed, damage, hp, points):
         pygame.sprite.Sprite.__init__(self)
-        self.size = [100, 100]
-        self.debris_size = 30
-        self.debris_speed = random.randrange(10, 22)
-        self.norm_image = followermob1_img
+        self.size = size
+        self.debris_size = debris_size
+        self.debris_speed = debris_speed
+        self.norm_image = norm_image
         self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = followermob1_hit_anim
+        self.hit_anim = hit_anim
         self.rect = self.image.get_rect()
-        self.speed = random.randrange(1, 6)
-        self.damage = 100
+        self.speed = speed
+        self.damage = damage
         self.hit = False
         self.hitcount = 0
-        self.hp = 30
+        self.hp = hp
         self.hp_full = self.hp
         self.hp_bar_show = False
         self.hp_bar_show_start_time = 0
         self.dead = False
-        self.points = 400
+        self.points = points
         self.no_points = False
         self.type = random.randrange(1, 5)
         if self.type == 1:
@@ -1139,8 +1140,6 @@ class FollowerMob1(pygame.sprite.Sprite):
         self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
         all_mobs.add(self)
-
-        self.group.add(self)
 
     def update(self):
         global score
@@ -1179,7 +1178,19 @@ class FollowerMob1(pygame.sprite.Sprite):
             self.kill()
 
 
-class FollowerMob2(pygame.sprite.Sprite):
+class FollowerMob1(FollowerMob):
+    """
+    moves toward player with random speed
+    """
+    group = pygame.sprite.Group()
+
+    def __init__(self):
+        FollowerMob.__init__(self, [100, 100], 30, random.randrange(10, 22), followermob1_img, followermob1_hit_anim, random.randrange(1, 6), 100, 30, 400)
+
+        self.group.add(self)
+
+
+class FollowerMob2(FollowerMob):
     """
     similaar to FollowerMob1, but generates a number of small mobs when killed
     small mobs will be defined in a separate sprite class named "FollowerMob2Child"
@@ -1187,86 +1198,15 @@ class FollowerMob2(pygame.sprite.Sprite):
     group = pygame.sprite.Group()
 
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.size = [140, 140]
-        self.debris_size = 30
-        self.debris_speed = random.randrange(12, 25)
-        self.norm_image = followermob2_img
-        self.image = pygame.transform.scale(self.norm_image, self.size)
-        self.hit_anim = followermob2_hit_anim
-        self.rect = self.image.get_rect()
-        self.speed = random.randrange(1, 3)
-        self.damage = 345
-        self.hit = False
-        self.hitcount = 0
-        self.hp = 150
-        self.hp_full = self.hp
-        self.hp_bar_show = False
-        self.hp_bar_show_start_time = 0
-        self.dead = False
-        self.points = 900
-        self.no_points = False
-        self.type = random.randrange(1, 5)
-        if self.type == 1:
-            self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                          (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-            self.abs_y = random.randrange(-self.rect.height * 2, -self.rect.height) - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height
-        elif self.type == 2:
-            self.abs_x = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width),
-                                          (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width)
-            self.abs_y = random.randrange(self.rect.height, self.rect.height * 2) + (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height
-        elif self.type == 3:
-            self.abs_x = random.randrange(-self.rect.width * 2, -self.rect.width) - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_width
-            self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                          (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        else:
-            self.abs_x = random.randrange(self.rect.width, self.rect.width * 2) + (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_width - self.rect.width
-            self.abs_y = random.randrange(round(-(SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height),
-                                          (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - self.rect.height)
-        self.rect.x = round(self.abs_x - screen_center[0])
-        self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-        self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
-        self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
-        all_mobs.add(self)
+        FollowerMob.__init__(self, [140, 140], 30, random.randrange(12, 25), followermob2_img, followermob2_hit_anim, random.randrange(1, 3), 345, 150, 900)
 
         self.group.add(self)
 
     def update(self):
-        global score
-        if self.hp <= 0:
-            self.dead = True
-        if not self.dead:
-            if self.hit:
-                self.hp_bar_show = True
-                self.hp_bar_show_start_time = time.time()
-                if self.hitcount >= len(self.hit_anim):
-                    self.hitcount = 0
-                    self.hit = False
-                else:
-                    self.image = pygame.transform.scale(self.hit_anim[self.hitcount], self.size)
-                    self.hitcount += 1
-            self.speedx = self.speed * (player.rect.center[0] - self.rect.center[0]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
-            self.speedy = self.speed * (player.rect.center[1] - self.rect.center[1]) / math.sqrt((player.rect.center[0] - self.rect.center[0]) * (player.rect.center[0] - self.rect.center[0]) + (player.rect.center[1] - self.rect.center[1]) * (player.rect.center[1] - self.rect.center[1]))
-            self.abs_x += self.speedx
-            self.abs_y += self.speedy
-            self.rect.x = round(self.abs_x - screen_center[0])
-            self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
+        FollowerMob.update(self)
 
-            if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
-                self.hp_bar_show = False
-
-        else:
-            if not self.no_points:
-                avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
-                split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-                self.spread_children()
-            if random.random() <= ITEM_DROP_PROBABILITY:
-                item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
-                all_sprites.add(item)
-                items.add(item)
-            expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
-            Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            self.kill()
+        if self.dead and not self.no_points:
+            self.spread_children()
 
     def spread_children(self):
         dist_x = player.rect.center[0] - self.rect.center[0]
