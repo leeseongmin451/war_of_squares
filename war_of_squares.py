@@ -1259,15 +1259,7 @@ class FollowerMob2(pygame.sprite.Sprite):
             if not self.no_points:
                 avg_debris_cnt = round((self.size[0] + self.size[1]) / 10)
                 split(self.rect.center, avg_debris_cnt, self.debris_size, self.points / avg_debris_cnt, self.debris_speed)
-                dist_x = player.rect.center[0] - self.rect.center[0]
-                dist_y = player.rect.center[1] - self.rect.center[1]
-                angle = math.atan2(dist_y, dist_x)
-                children_cnt = random.randrange(70, 80)
-                for c in range(children_cnt):
-                    direction = random.uniform(angle + math.pi / 6, angle + math.pi * 11 / 6)
-                    child = FollowerMob2Child((random.randrange(self.rect.width / 2) + self.abs_x + self.rect.width / 4, random.randrange(self.rect.height / 2) + self.abs_y + self.rect.height / 4), direction)
-                    all_sprites.add(child)
-                    all_mobs.add(child)
+                self.spread_children()
             if random.random() <= ITEM_DROP_PROBABILITY:
                 item = Item([self.rect.center[0] + screen_center[0], self.rect.center[1] + screen_center[1]], get_item_type())
                 all_sprites.add(item)
@@ -1275,6 +1267,19 @@ class FollowerMob2(pygame.sprite.Sprite):
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
             Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
             self.kill()
+
+    def spread_children(self):
+        dist_x = player.rect.center[0] - self.rect.center[0]
+        dist_y = player.rect.center[1] - self.rect.center[1]
+        angle = math.atan2(dist_y, dist_x)
+        children_cnt = random.randrange(70, 80)
+        for c in range(children_cnt):
+            direction = random.uniform(angle + math.pi / 6, angle + math.pi * 11 / 6)
+            child = FollowerMob2Child((random.randrange(self.rect.width / 2) + self.abs_x + self.rect.width / 4,
+                                       random.randrange(self.rect.height / 2) + self.abs_y + self.rect.height / 4),
+                                      direction)
+            all_sprites.add(child)
+            all_mobs.add(child)
 
 
 class FollowerMob2Child(pygame.sprite.Sprite):
