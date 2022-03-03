@@ -1443,18 +1443,8 @@ class MinigunMob1(pygame.sprite.Sprite):
                     self.abs_y = (SCREEN_FIELD_SIZE_RATIO / 2 + 0.5) * screen_height - 1
                 else:
                     self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
-            if time.time() - self.last_shoot > self.shoot_interval and not self.trigger:
-                self.trigger = True
-            if self.trigger:
-                if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
-                    dist_x = player.rect.center[0] - self.rect.center[0]
-                    dist_y = player.rect.center[1] - self.rect.center[1]
-                    angle = math.atan2(dist_y, dist_x)
-                    bullet = MobBullet1(self.power, 8, self.rect.center, angle)
-                    all_sprites.add(bullet)
-                    mob_bullets.add(bullet)
-                    self.trigger = False
-                    self.last_shoot = time.time()
+
+            self.use_minigun()
 
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
@@ -1472,6 +1462,20 @@ class MinigunMob1(pygame.sprite.Sprite):
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
             Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
             self.kill()
+
+    def use_minigun(self):
+        if time.time() - self.last_shoot > self.shoot_interval and not self.trigger:
+            self.trigger = True
+        if self.trigger:
+            if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
+                dist_x = player.rect.center[0] - self.rect.center[0]
+                dist_y = player.rect.center[1] - self.rect.center[1]
+                angle = math.atan2(dist_y, dist_x)
+                bullet = MobBullet1(self.power, 8, self.rect.center, angle)
+                all_sprites.add(bullet)
+                mob_bullets.add(bullet)
+                self.trigger = False
+                self.last_shoot = time.time()
 
 
 class MinigunMob2(pygame.sprite.Sprite):
@@ -1612,25 +1616,7 @@ class MinigunMob2(pygame.sprite.Sprite):
                 else:
                     self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
 
-            dist_x = player.rect.center[0] - self.rect.center[0]
-            dist_y = player.rect.center[1] - self.rect.center[1]
-            self.shoot_dir = math.atan2(dist_y, dist_x)
-
-            if time.time() - self.last_shoot > self.interval and not self.trigger:
-                self.interval = self.shoot_interval
-                self.current_bullets = self.bullets_per_shoot
-                self.trigger = True
-                self.shoot_angle = self.shoot_dir - math.pi / 2
-            if self.trigger:
-                if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
-                    bullet = Bullet(self.power, 8, [6, 6], RED1, self.rect.center, self.shoot_angle, True)
-                    all_sprites.add(bullet)
-                    mob_bullets.add(bullet)
-                self.shoot_angle += math.pi / 6
-                self.current_bullets -= 1
-                if self.current_bullets <= 0:
-                    self.trigger = False
-                    self.last_shoot = time.time()
+            self.use_minigun()
 
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
@@ -1648,6 +1634,27 @@ class MinigunMob2(pygame.sprite.Sprite):
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
             Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
             self.kill()
+
+    def use_minigun(self):
+        dist_x = player.rect.center[0] - self.rect.center[0]
+        dist_y = player.rect.center[1] - self.rect.center[1]
+        self.shoot_dir = math.atan2(dist_y, dist_x)
+
+        if time.time() - self.last_shoot > self.interval and not self.trigger:
+            self.interval = self.shoot_interval
+            self.current_bullets = self.bullets_per_shoot
+            self.trigger = True
+            self.shoot_angle = self.shoot_dir - math.pi / 2
+        if self.trigger:
+            if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
+                bullet = Bullet(self.power, 8, [6, 6], RED1, self.rect.center, self.shoot_angle, True)
+                all_sprites.add(bullet)
+                mob_bullets.add(bullet)
+            self.shoot_angle += math.pi / 6
+            self.current_bullets -= 1
+            if self.current_bullets <= 0:
+                self.trigger = False
+                self.last_shoot = time.time()
 
 
 class MinigunMob3(pygame.sprite.Sprite):
@@ -1787,23 +1794,7 @@ class MinigunMob3(pygame.sprite.Sprite):
                 else:
                     self.abs_y = -self.rect.height - (SCREEN_FIELD_SIZE_RATIO / 2 - 0.5) * screen_height + 1
 
-            if time.time() - self.last_shoot > self.interval and not self.trigger:
-                self.interval = self.shoot_interval
-                self.shoot_angle = random.uniform(0, math.pi / 4)
-                self.current_bullets = 0
-                self.trigger = True
-            if self.trigger:
-                if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
-                    angle = 0
-                    while angle < 2 * math.pi * 0.999:
-                        bullet = Bullet(self.power, 13, [6, 6], RED1, self.rect.center, self.shoot_angle + angle, True)
-                        all_sprites.add(bullet)
-                        mob_bullets.add(bullet)
-                        angle += math.pi / 4
-                    self.current_bullets += 1
-                    if self.current_bullets >= self.bullets_per_shoot:
-                        self.trigger = False
-                        self.last_shoot = time.time()
+            self.use_minigun()
 
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
@@ -1821,6 +1812,25 @@ class MinigunMob3(pygame.sprite.Sprite):
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
             Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
             self.kill()
+
+    def use_minigun(self):
+        if time.time() - self.last_shoot > self.interval and not self.trigger:
+            self.interval = self.shoot_interval
+            self.shoot_angle = random.uniform(0, math.pi / 4)
+            self.current_bullets = 0
+            self.trigger = True
+        if self.trigger:
+            if -200 <= self.rect.center[0] <= screen_width + 200 and -200 <= self.rect.center[1] <= screen_height + 200:
+                angle = 0
+                while angle < 2 * math.pi * 0.999:
+                    bullet = Bullet(self.power, 13, [6, 6], RED1, self.rect.center, self.shoot_angle + angle, True)
+                    all_sprites.add(bullet)
+                    mob_bullets.add(bullet)
+                    angle += math.pi / 4
+                self.current_bullets += 1
+                if self.current_bullets >= self.bullets_per_shoot:
+                    self.trigger = False
+                    self.last_shoot = time.time()
 
 
 class ShellMob1(pygame.sprite.Sprite):
