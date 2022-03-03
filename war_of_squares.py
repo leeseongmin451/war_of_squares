@@ -2824,12 +2824,6 @@ class OrbitMob1(pygame.sprite.Sprite):
             for orbiter in self.orbiters:
                 orbiter.update(self.rect.center)
 
-            if time.time() - self.last_attacked >= self.attack_interval:
-                for orbiter in self.orbiters:
-                    orbiter.attack()
-                self.last_attacked = time.time()
-                self.attack_interval = random.uniform(5, 10)
-
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
 
@@ -2849,6 +2843,13 @@ class OrbitMob1(pygame.sprite.Sprite):
                 orbiter.dead = True
                 orbiter.update(self.rect.center)
             self.kill()
+
+    def attack(self):
+        if time.time() - self.last_attacked >= self.attack_interval:
+            for orbiter in self.orbiters:
+                orbiter.attack()
+            self.last_attacked = time.time()
+            self.attack_interval = random.uniform(5, 10)
 
 
 class Orbiter1(pygame.sprite.Sprite):
@@ -3071,15 +3072,6 @@ class OrbitMob2(pygame.sprite.Sprite):
             for orbiter in self.orbiters:
                 orbiter.update(self.rect.center)
 
-            if time.time() - self.last_attacked >= self.attack_interval:
-                dist_x = player.rect.center[0] - self.rect.center[0]
-                dist_y = player.rect.center[1] - self.rect.center[1]
-                angle = math.atan2(dist_y, dist_x)
-                for orbiter in self.orbiters:
-                    orbiter.attack(angle)
-                self.last_attacked = time.time()
-                self.attack_interval = random.uniform(6, 12)
-
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
                 self.hp_bar_show = False
 
@@ -3099,6 +3091,16 @@ class OrbitMob2(pygame.sprite.Sprite):
                 orbiter.dead = True
                 orbiter.update(self.rect.center)
             self.kill()
+
+    def attack(self):
+        if time.time() - self.last_attacked >= self.attack_interval:
+            dist_x = player.rect.center[0] - self.rect.center[0]
+            dist_y = player.rect.center[1] - self.rect.center[1]
+            angle = math.atan2(dist_y, dist_x)
+            for orbiter in self.orbiters:
+                orbiter.attack(angle)
+            self.last_attacked = time.time()
+            self.attack_interval = random.uniform(6, 12)
 
 
 class Orbiter2(pygame.sprite.Sprite):
@@ -3238,6 +3240,7 @@ class OrbitMob3(pygame.sprite.Sprite):
         self.opposite = True
         self.orbit1_orbiters = pygame.sprite.Group()            # outer orbit
         self.orbit2_orbiters = pygame.sprite.Group()            # inner orbit
+        self.orbiters = pygame.sprite.Group()                   # All orbiters
         self.max_number_of_orbiters = 30
         self.number_of_orbiters = 0
 
@@ -3253,7 +3256,6 @@ class OrbitMob3(pygame.sprite.Sprite):
         self.speedy = self.speed * math.sin(self.angle)
         self.rect.x = round(self.abs_x - screen_center[0])
         self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
-
         self.spawned = False
         self.spawn_effect = SpawnEffect(self.rect.center, [self.size[0], self.size[1]])
         all_sprites.add(self.spawn_effect)
@@ -3273,12 +3275,14 @@ class OrbitMob3(pygame.sprite.Sprite):
                 for num in range(30):
                     self.orbiter = Orbiter3(self.rect.center, 250, 0.01, num * 2 * math.pi / 30, 3, self.opposite)
                     self.orbit1_orbiters.add(self.orbiter)
+                    self.orbiters.add(self.orbiter)
                     all_mobs.add(self.orbiter)
                     self.opposite = not self.opposite
 
                 for num in range(20):
                     self.orbiter = Orbiter3(self.rect.center, 180, 0.02, num * 2 * math.pi / 20, 3, self.opposite)
                     self.orbit2_orbiters.add(self.orbiter)
+                    self.orbiters.add(self.orbiter)
                     all_mobs.add(self.orbiter)
                     self.opposite = not self.opposite
             return
@@ -3319,24 +3323,25 @@ class OrbitMob3(pygame.sprite.Sprite):
             self.rect.x = round(self.abs_x - screen_center[0])
             self.rect.y = round(self.abs_y - screen_center[1] + field_shift_pos)
 
-            # ganerate outer orbit
+            # generate outer orbit
             if len(self.orbit1_orbiters) <= 15:
                 for num in range(30):
                     self.orbiter = Orbiter3(self.rect.center, 250, 0.01, num * 2 * math.pi / 30, 3, self.opposite)
                     self.orbit1_orbiters.add(self.orbiter)
+                    self.orbiters.add(self.orbiter)
                     all_mobs.add(self.orbiter)
                     self.opposite = not self.opposite
-            for orbiter in self.orbit1_orbiters:
-                orbiter.update(self.rect.center)
 
-            # ganerate middle1 orbit
+            # generate inner orbit
             if len(self.orbit2_orbiters) <= 10:
                 for num in range(20):
                     self.orbiter = Orbiter3(self.rect.center, 180, 0.02, num * 2 * math.pi / 20, 3, self.opposite)
                     self.orbit2_orbiters.add(self.orbiter)
+                    self.orbiters.add(self.orbiter)
                     all_mobs.add(self.orbiter)
                     self.opposite = not self.opposite
-            for orbiter in self.orbit2_orbiters:
+
+            for orbiter in self.orbiters:
                 orbiter.update(self.rect.center)
 
             if time.time() - self.hp_bar_show_start_time > MOB_HP_BAR_SHOW_DURATION:
@@ -3354,13 +3359,13 @@ class OrbitMob3(pygame.sprite.Sprite):
                 items.add(item)
             expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
             Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
-            for orbiter in self.orbit1_orbiters:
-                orbiter.dead = True
-                orbiter.update(self.rect.center)
-            for orbiter in self.orbit2_orbiters:
+            for orbiter in self.orbiters:
                 orbiter.dead = True
                 orbiter.update(self.rect.center)
             self.kill()
+
+    def attack(self):
+        pass
 
 
 class Orbiter3(pygame.sprite.Sprite):
