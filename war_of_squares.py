@@ -3882,8 +3882,6 @@ class BossLV1(MoveLineMob):
         self.speedx = self.speed * math.cos(self.angle)
         self.speedy = self.speed * math.sin(self.angle)
 
-        MoveLineMob.set_pos_and_spawn(self, [self.abs_x, self.abs_y])
-
         self.in_map = False
 
     def update(self):
