@@ -6025,7 +6025,7 @@ hiteffect_anim = []
 for i in range(HitEffect.ANIMATION_FRAME_CNT):
     filename = "hit_{:0>4}.png".format(i)
     filepath = path.join(hit_dir, filename)
-    hit_img = pygame.image.load(filepath).convert()
+    hit_img = pygame.image.load(filepath).convert_alpha()
     hit_img.set_colorkey(BLACK)
     hiteffect_anim.append(hit_img)
 
@@ -6036,7 +6036,7 @@ for j in range(1, EXPLOSION_TYPES + 1):
         filename = "expl_{0:0>2}_{1:0>4}.png".format(j, i)
         filepath = path.join(expl_dir, filename)
         if path.isfile(filepath):
-            expl_img = pygame.image.load(filepath).convert()
+            expl_img = pygame.image.load(filepath).convert_alpha()
             expl_img.set_colorkey(BLACK)
             explosion_anim[str(j)].append(expl_img)
 
