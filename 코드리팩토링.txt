@@ -1,0 +1,79 @@
+### 이미 잘하고 있는 점
+
+1. 이름 규칙이 잘 맞는 것 같다. war_of_game() snake casing 이 잘 적용되어있는 것 같다.
+2. 코드에 군더더기가 없어보인다. 필요이상의 코드가 업는것으로 보인다.
+
+### 코드 외
+
+1. Commit Rule 적용하기
+https://gist.github.com/auaicn/6048208a444783e8472d8f71b1ef6dab
+
+### 개선점
+
+0. 파일 분리하기
+디렉터리도 나누면 좋다.
+보통은 1클래스 1파일.. 이지 않은가? 파이썬이라서 다를 수는 있다.
+
+1. 선언 순서
+끼어들지만 않으면 된다. + 비슷한 애들은 묶어준다.
+[O] BossLV1 BossLV2 ... BossLV5
+[X] BossLV1 Item BossLV2 이런식이면 보기가 힘들 수 있지.
+
+2. 상속 관계(추상화)
+재사용을 할 수 있으면 최대한 해보기
+__init__, update(pygame.sprite.SPRITE) 얘의 인터페이스르 구현한거다.
+/
+ㄴ Player -> 얘만 필요한 상수는 player.py 에 넣으면 된다.
+ㄴ Mob
+ㄴ Item
+ㄴ Pointer
+ㄴ Effect
+ㄴ Level
+
+3. 범위
+generate_shield() 는 하나의 클래스에서밖에 사용이 되지 않더라.
+클래스 내부로 넣으면 될듯
+
+4. 상수를 다른 파일로 빼기.
+rgb 값 등등 -> design.py constants.py(얘는 변경되면 안되는거고)
+score 같은 변수도 -> enviornment.py(변경이 가능한애들?)
+
+5. 실행 파일 자체는 간단해야 한다.
+ - main.py(war_of_squares.py) 는 처음으로 마주하는 파일이 될 것이다.
+   게임 시작 코드가 아래에 있어 현재는 시작지점을 알기 어렵다. 
+ - 파일 분리하면 알아서 될 듯
+
+6. enum 적용해보기
+MoveLineMob2 이러면 "2" 가 뜻하는게 무엇인지 다른 사람은 알 수 없음.
+
+>>> class Level(Enum):
+...     LEVEL1 = 1
+...     LEVEL2 = 2
+...
+...     def describe(self):
+...         # self is the member here
+...         return self.name, self.value
+...
+...     def __str__(self):
+...         return 'my custom str! {0}'.format(self.value)
+...
+...     @classmethod
+...     def favorite_mood(cls):
+...         # cls here is the enumeration
+...         return cls.HAPPY
+...
+
+[V] 7. 자료구조의 사용
+아래 같은 경우, 리스트를 사용하기
+linemob1_img = [pygame.image.load(path.join(char_dir, "linemob1.png")).convert()]
+linemob1_hit_img = [pygame.image.load(path.join(char_dir, "linemob1_hit.png")).convert()]
+linemob1_hit_anim = [[linemob1_hit_img, linemob1_img] * 3]
+
+8. 계산이 많이 보인다
+utilities.py 를 만드는 것이 좋아보인다.
+
+9. Hardcode 된 부분들 변수화
+``` python
+for i in range(32):
+```
+에서는 `32` 가 어떤 의미인지 알기 어렵다.
