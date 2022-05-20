@@ -3842,7 +3842,7 @@ class MineBomb(pygame.sprite.Sprite):
                 expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
                 Explosion(self.rect.center, expl_type, (round(self.size[0] * MOB_EXPLOSION_SIZE_RATIO), round(self.size[1] * MOB_EXPLOSION_SIZE_RATIO)))
             else:
-                Shockwave(self.rect.center, self.shock_range)
+                Shockwave(self.rect.center, self.shock_range, 3)
                 expl_type = random.randrange(1, EXPLOSION_TYPES + 1)
                 Explosion(self.rect.center, expl_type, (round(self.size[0] * 6), round(self.size[1] * 6)))
                 player_dist = distance(self.rect.center, player.rect.center)
@@ -5471,7 +5471,7 @@ class Explosion(pygame.sprite.Sprite):
 
 
 class Shockwave(pygame.sprite.Sprite):
-    def __init__(self, pos, shock_range):
+    def __init__(self, pos, shock_range, blink_cnt=1):
         pygame.sprite.Sprite.__init__(self)
         self.shock_range = shock_range
         self.size = [self.shock_range * 2, self.shock_range * 2]
@@ -5480,7 +5480,8 @@ class Shockwave(pygame.sprite.Sprite):
         self.rect.center = pos
         self.abs_x = self.rect.x + screen_center[0]
         self.abs_y = self.rect.y + screen_center[1]
-        self.frame = 6
+        self.blink_cnt = blink_cnt
+        self.frame = self.blink_cnt * 2
         self.current_frame = 0
 
         all_sprites.add(self)
