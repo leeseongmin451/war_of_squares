@@ -49,8 +49,8 @@ MOB_HP_BAR_SHOW_DURATION = 3        # In seconds
 MOB_PROJECTILE_VALID_MARGIN = 200
 EXPLOSION_TYPES = 11                # Number of kinds of explosion animations
 ITEM_DROP_PROBABILITY = 0.02        # Probability of dropping an item when a mob is killed
-MOB_EXPLOSION_SIZE_RATIO = 1.5      # mob_size * MOB_EXPLOSION_SIZE_RATIO = explosion_size
-BULLET_HITEFFECT_SIZE_RATIO = 6.4   # bullet_size * BULLET_HITEFFECT_SIZE_RATIO = hiteffect_size
+MOB_EXPLOSION_SIZE_RATIO = 3        # mob_size * MOB_EXPLOSION_SIZE_RATIO = explosion_size
+BULLET_HITEFFECT_SIZE_RATIO = 9     # bullet_size * BULLET_HITEFFECT_SIZE_RATIO = hiteffect_size
 
 NONZERO = .00000000001              # This will be added to some variables to avoid ZerDivisionError
 
