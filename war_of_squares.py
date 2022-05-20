@@ -5456,6 +5456,9 @@ class Explosion(pygame.sprite.Sprite):
         all_sprites.add(self)
         explosions.add(self)
 
+        # Generate Shockwave
+        Shockwave(self.rect.center, self.size[0] // 2)
+
     def update(self):
         self.frame += 1
         if self.frame == len(explosion_anim[str(self.type)]):
