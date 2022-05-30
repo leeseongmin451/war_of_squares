@@ -5230,6 +5230,9 @@ class BossLV5(pygame.sprite.Sprite):
             for orb in self.orbit4_orbiters:
                 orb.dead = True
                 orb.update(self.rect.center)
+            for orb in self.straight_line_orbiters:
+                orb.dead = True
+                orb.update(self.rect.center)
             self.kill()
 
 
